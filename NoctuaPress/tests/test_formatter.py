@@ -14,7 +14,7 @@ import json
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.extractor import extraer_pdf
-from core.formatter import formatear_pdf, PDFFormatter
+from NoctuaPress.core.formateador import formatear_pdf, PDFFormatter
 from core.models import ConfiguracionFormateo, TamañoPagina, PosicionNumeracion
 
 
@@ -278,7 +278,7 @@ def test_integración_extractor_formatter():
     resultado_extraccion = extraer_pdf(str(ruta_pdf_prueba))
     
     assert resultado_extraccion.exitoso, "Extracción falló"
-    contenido = resultado_extraccion.contenido
+    contenido = resultado_extraccion.bloques
     
     # Paso 2: Formatear con Módulo 2
     config = ConfiguracionFormateo(

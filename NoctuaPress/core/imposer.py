@@ -78,7 +78,7 @@ class PDFImposer:
     def imponer_bytes(self, pdf_bytes: bytes, ruta_salida: Optional[str] = None) -> ResultadoImposicion:
         """Genera el PDF impuesto a partir de bytes de PDF."""
         try:
-            reader = PdfReader(stream=pdf_bytes)
+            reader = PdfReader(stream=io.BytesIO(pdf_bytes))
             paginas_fuente = len(reader.pages)
             orden = self._calcular_orden_imposicion(paginas_fuente)
 

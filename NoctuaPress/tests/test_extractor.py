@@ -83,13 +83,13 @@ def test_extraccion_basica():
     # Debug: mostrar estado de la extracción
     print(f"  Exitoso: {resultado.exitoso}")
     print(f"  Error: {resultado.error}")
-    print(f"  Contenido items: {len(resultado.contenido)}")
+    print(f"  Bloques items: {len(resultado.bloques)}")
     print(f"  Metadatos páginas: {resultado.metadatos.get('páginas_originales', 'N/A')}")
     print(f"  Palabras: {resultado.metadatos.get('palabras_totales', 'N/A')}")
     
     # Validar
     assert resultado.exitoso, f"Extracción falló: {resultado.error}"
-    assert len(resultado.contenido) > 0, "Contenido vacío"
+    assert len(resultado.bloques) > 0, "Contenido vacío"
     assert resultado.metadatos["páginas_originales"] > 0, "No se detectaron páginas"
     
     print(f"✓ PDF extraído exitosamente")
@@ -108,9 +108,9 @@ def test_estructura_contenido():
     ruta_pdf = Path(__file__).parent / "test_document.pdf"
     resultado = extraer_pdf(str(ruta_pdf))
     
-    print(f"\n📋 Contenido extraído ({len(resultado.contenido)} elementos raíz):\n")
+    print(f"\n📋 Contenido extraído ({len(resultado.bloques)} elementos raíz):\n")
     
-    for i, elemento in enumerate(resultado.contenido):
+    for i, elemento in enumerate(resultado.bloques):
         if elemento["tipo"] == "capítulo":
             print(f"{i+1}. [CAPÍTULO] {elemento['título']}")
             for j, subelemento in enumerate(elemento.get("contenido", [])):
@@ -179,7 +179,7 @@ def test_json_export():
     # Crear estructura serializable
     datos_json = {
         "exitoso": resultado.exitoso,
-        "contenido": resultado.contenido,
+        "bloques": resultado.bloques,
         "metadatos": resultado.metadatos
     }
     

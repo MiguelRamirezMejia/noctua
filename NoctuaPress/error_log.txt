@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "C:\Users\usuario\Documents\github\En github\noctua\NoctuaPress\ui\main_window.py", line 9, in <module>
+    from core.imposer import PDFImposer
+  File "C:\Users\usuario\Documents\github\En github\noctua\NoctuaPress\core\imposer.py", line 14, in <module>
+    from pypdf import PdfReader, PdfWriter, PageObject
+ModuleNotFoundError: No module named 'pypdf'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\usuario\Documents\github\En github\noctua\NoctuaPress\run.py", line 16, in run
+    from ui.main_window import main
+  File "C:\Users\usuario\Documents\github\En github\noctua\NoctuaPress\ui\main_window.py", line 14, in <module>
+    from NoctuaPress.core.imposer import PDFImposer
+  File "C:\Users\usuario\Documents\github\En github\noctua\NoctuaPress\core\imposer.py", line 14, in <module>
+    from pypdf import PdfReader, PdfWriter, PageObject
+ModuleNotFoundError: No module named 'pypdf'

@@ -69,6 +69,23 @@ def test_imposicion_pagina_impar():
     print(f"✓ Imposición exitosa con página impar: {resultado.paginas_salida} páginas de salida")
 
 
+def test_imposicion_desde_bytes():
+    print("TEST: Imposición de PDF a partir de bytes")
+    ruta_fuente = Path("output/test_imposer_source_bytes.pdf")
+    crear_pdf_fuente(ruta_fuente, paginas=4)
+
+    pdf_bytes = ruta_fuente.read_bytes()
+    imposer = PDFImposer()
+    resultado = imposer.imponer_bytes(pdf_bytes)
+
+    assert resultado.exitoso, f"Imposición desde bytes falló: {resultado.error}"
+    assert resultado.paginas_fuente == 4, "El PDF fuente debe tener 4 páginas"
+    assert resultado.paginas_salida == 2, "El PDF impuesto debe tener 2 páginas de salida"
+    assert len(resultado.pdf_bytes) > 0, "Bytes de salida vacíos"
+
+    print("✓ Imposición desde bytes exitosa")
+
+
 def main():
     print("\n🧪 SUITE DE PRUEBAS - MÓDULO 3: IMPOSICIÓN DE PDF\n")
     try:

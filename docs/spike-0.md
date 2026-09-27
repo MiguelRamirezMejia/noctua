@@ -6,18 +6,18 @@ Código en `spike/` (desechable; el código definitivo va en `app/Domain`).
 
 ## Resultados
 
-| Medida | Resultado |
-|---|---|
-| Libro completo, 326 páginas media carta, PDF | **0,86–0,95 s** |
-| Capítulo aislado (15 págs.), PDF | ~190 ms (la mayor parte es arranque del proceso y carga de fuentes) |
-| Capítulo aislado, SVG por página | ~240 ms (15 archivos) |
-| Capítulo aislado, PNG 96 ppi | ~290 ms |
-| Posiciones de bloques (`typst eval` + `query`) | ~190 ms capítulo · ~830 ms libro |
-| Capítulo aislado vs. mismas páginas en el libro | **317 páginas, 0 píxeles distintos** (tras reiniciar notas por capítulo) |
-| Determinismo Typst (`--creation-timestamp 0`) | hash idéntico entre ejecuciones |
-| Determinismo FPDF | idéntico tras sobrescribir `_putinfo()` |
-| Imposición 2-up, libro de 326 págs. (21 cuadernillos × 4 hojas) | 0,55 s, 168 caras carta |
-| Precisión de colocación FPDI (render 600 dpi) | error ≤ 0,03 mm (< 1 px) |
+| Medida                                                          | Resultado                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Libro completo, 326 páginas media carta, PDF                    | **0,86–0,95 s**                                                          |
+| Capítulo aislado (15 págs.), PDF                                | ~190 ms (la mayor parte es arranque del proceso y carga de fuentes)      |
+| Capítulo aislado, SVG por página                                | ~240 ms (15 archivos)                                                    |
+| Capítulo aislado, PNG 96 ppi                                    | ~290 ms                                                                  |
+| Posiciones de bloques (`typst eval` + `query`)                  | ~190 ms capítulo · ~830 ms libro                                         |
+| Capítulo aislado vs. mismas páginas en el libro                 | **317 páginas, 0 píxeles distintos** (tras reiniciar notas por capítulo) |
+| Determinismo Typst (`--creation-timestamp 0`)                   | hash idéntico entre ejecuciones                                          |
+| Determinismo FPDF                                               | idéntico tras sobrescribir `_putinfo()`                                  |
+| Imposición 2-up, libro de 326 págs. (21 cuadernillos × 4 hojas) | 0,55 s, 168 caras carta                                                  |
+| Precisión de colocación FPDI (render 600 dpi)                   | error ≤ 0,03 mm (< 1 px)                                                 |
 
 ## Hallazgos
 

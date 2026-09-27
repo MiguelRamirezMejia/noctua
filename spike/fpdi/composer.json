@@ -1,0 +1,13 @@
+{
+    "name": "noctua/spike-fpdi",
+    "authors": [
+        {
+            "name": "MiguelRamirezMejia",
+            "email": "miguelramirezcoach@gmail.com"
+        }
+    ],
+    "require": {
+        "setasign/fpdi": "^2.6",
+        "setasign/fpdf": "^1.8"
+    }
+}

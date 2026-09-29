@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Domain\Imposition\ImpositionSettings;
+use App\Domain\Printing\PageFit;
 use App\Domain\Printing\Pdf\PdfImposer;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
@@ -22,6 +23,7 @@ class ImposeCommand extends Command
         {--front-offset=0,0 : Offset X,Y del frente en mm}
         {--back-offset=0,0 : Offset X,Y del dorso en mm}
         {--unprintable=5 : Zona no imprimible de la impresora en mm}
+        {--fit=actual : Ajuste de página: actual, fit (sin recortes) o fill (llena la media hoja)}
         {--no-fold-marks : No dibujar marcas de doblez}';
 
     protected $description = 'Impone un PDF en hojas carta horizontales 2-up por cuadernillos';
@@ -53,7 +55,10 @@ class ImposeCommand extends Command
                     backOffset: $this->offsetOption('back-offset'),
                     unprintableMarginMm: $this->floatOption('unprintable'),
                 ),
-                new PrintOptions(foldMarks: ! $this->option('no-fold-marks')),
+                new PrintOptions(
+                    foldMarks: ! $this->option('no-fold-marks'),
+                    pageFit: $this->pageFitOption(),
+                ),
             );
         } catch (InvalidArgumentException $e) {
             $this->components->error($e->getMessage());
@@ -86,5 +91,13 @@ class ImposeCommand extends Command
         ]);
 
         return self::SUCCESS;
+    }
+
+    private function pageFitOption(): PageFit
+    {
+        $value = $this->option('fit');
+
+        return PageFit::tryFrom(is_string($value) ? $value : '')
+            ?? throw new InvalidArgumentException('--fit debe ser actual, fit o fill.');
     }
 }

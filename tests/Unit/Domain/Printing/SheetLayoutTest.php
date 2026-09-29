@@ -4,6 +4,7 @@ use App\Domain\Imposition\SheetSide;
 use App\Domain\Imposition\Slot;
 use App\Domain\Printing\Offset;
 use App\Domain\Printing\PageDoesNotFit;
+use App\Domain\Printing\PageFit;
 use App\Domain\Printing\Placement;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\SheetLayout;
@@ -55,6 +56,36 @@ it('aplica el offset de la cara correspondiente', function () {
     expect(coords($layout->place($side, Side::Front)))->toBe([[2, 1.0, -0.5], [3, 140.7, -0.5]])
         ->and(coords($layout->place($side, Side::Back)))->toBe([[2, -0.8, 0.3], [3, 138.9, 0.3]])
         ->and($layout->foldXMm(Side::Back))->toEqualWithDelta(138.9, 1e-9);
+});
+
+it('ajusta una página carta a la zona imprimible de la media hoja sin recortarla', function () {
+    $layout = new SheetLayout(Size::letterLandscape(), new Size(215.9, 279.4), fit: PageFit::Fit);
+    [$left, $right] = $layout->place(new SheetSide(new Slot(2), new Slot(3)), Side::Front);
+
+    // Limita el ancho: (139.7 − 5) / 215.9.
+    expect($layout->scale)->toEqualWithDelta(134.7 / 215.9, 1e-9)
+        ->and(round($layout->placed->widthMm, 2))->toBe(134.7)
+        ->and(round($layout->placed->heightMm, 2))->toBe(174.32)
+        ->and(round($left->xMm, 2))->toBe(5.0)
+        ->and(round($right->xMm, 2))->toBe(139.7)
+        ->and(round($left->yMm, 2))->toBe(20.79);
+});
+
+it('llena la media hoja escalando por el lado que la cubre entera', function () {
+    $layout = new SheetLayout(Size::letterLandscape(), new Size(215.9, 279.4), fit: PageFit::Fill);
+
+    expect($layout->scale)->toEqualWithDelta(215.9 / 279.4, 1e-9)
+        ->and(round($layout->placed->heightMm, 2))->toBe(215.9)
+        ->and($layout->placed->widthMm)->toBeGreaterThan(139.7);
+});
+
+it('recorta cada página a su media hoja, desplazada con el offset', function () {
+    $printer = new PrinterProfile(frontOffset: new Offset(1.0, 0.5));
+    $layout = new SheetLayout(Size::letterLandscape(), Size::halfLetter(), $printer);
+    [$left, $right] = $layout->place(new SheetSide(new Slot(4), new Slot(1)), Side::Front);
+
+    expect([$left->clip->xMm, $left->clip->yMm, round($left->clip->widthMm, 2)])->toBe([1.0, 0.5, 139.7])
+        ->and([round($right->clip->xMm, 2), round($right->clip->widthMm, 2), $right->clip->heightMm])->toBe([140.7, 139.7, 215.9]);
 });
 
 it('rechaza páginas que no caben dos veces en la hoja', function (Size $page) {

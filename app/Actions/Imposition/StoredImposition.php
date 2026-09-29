@@ -4,6 +4,7 @@ namespace App\Actions\Imposition;
 
 use App\Domain\Imposition\ImpositionSettings;
 use App\Domain\Printing\Offset;
+use App\Domain\Printing\PageFit;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
 use App\Models\User;
@@ -99,7 +100,10 @@ final readonly class StoredImposition
                 'back_offset_y' => $this->printer->backOffset->yMm,
                 'unprintable_margin_mm' => $this->printer->unprintableMarginMm,
             ],
-            'options' => ['fold_marks' => $this->options->foldMarks],
+            'options' => [
+                'fold_marks' => $this->options->foldMarks,
+                'page_fit' => $this->options->pageFit->value,
+            ],
         ];
     }
 
@@ -130,7 +134,10 @@ final readonly class StoredImposition
                 backOffset: new Offset($number($printer, 'back_offset_x'), $number($printer, 'back_offset_y')),
                 unprintableMarginMm: $number($printer, 'unprintable_margin_mm', 5.0),
             ),
-            options: new PrintOptions(foldMarks: ($options['fold_marks'] ?? true) === true),
+            options: new PrintOptions(
+                foldMarks: ($options['fold_marks'] ?? true) === true,
+                pageFit: PageFit::tryFrom(is_string($options['page_fit'] ?? null) ? $options['page_fit'] : '') ?? PageFit::Actual,
+            ),
             info: [
                 'original_name' => $meta['original_name'],
                 'created_at' => $meta['created_at'],

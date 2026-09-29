@@ -43,7 +43,7 @@ final class PdfImposer
                 $templates[$page] = $pdf->importPage($page);
             }
 
-            $layout = new SheetLayout($sheet, $this->uniformPageSize($pdf, $templates), $printer);
+            $layout = new SheetLayout($sheet, $this->uniformPageSize($pdf, $templates), $printer, $options->pageFit);
             $plan = $this->imposer->plan($settings->forPageCount($pageCount));
 
             foreach ($plan->sheets() as $physicalSheet) {
@@ -52,7 +52,9 @@ final class PdfImposer
                     $sheetSide = $side === Side::Front ? $physicalSheet->front : $physicalSheet->back;
 
                     foreach ($layout->place($sheetSide, $side) as $placement) {
-                        $pdf->useTemplate($templates[$placement->page], $placement->xMm, $placement->yMm, $placement->widthMm, $placement->heightMm);
+                        $pdf->clipped($placement->clip, function () use ($pdf, $templates, $placement): void {
+                            $pdf->useTemplate($templates[$placement->page], $placement->xMm, $placement->yMm, $placement->widthMm, $placement->heightMm);
+                        });
                     }
 
                     if ($options->foldMarks) {

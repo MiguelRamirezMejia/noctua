@@ -5,10 +5,12 @@ namespace App\Http\Requests;
 use App\Domain\Imposition\ImpositionSettings;
 use App\Domain\Imposition\ImpositionSpec;
 use App\Domain\Printing\Offset;
+use App\Domain\Printing\PageFit;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ImposeRequest extends FormRequest
 {
@@ -18,7 +20,7 @@ class ImposeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'pdf' => ['required', 'file', 'mimes:pdf', 'max:102400'],
+            'pdf' => ['required', 'file', 'mimes:pdf', 'max:512000'],
             'sheets_per_signature' => ['required', 'integer', 'between:'.ImpositionSpec::MIN_SHEETS_PER_SIGNATURE.','.ImpositionSpec::MAX_SHEETS_PER_SIGNATURE],
             'short_last_signature' => ['boolean'],
             'creep_mm' => ['required', 'numeric', 'between:0,2'],
@@ -28,6 +30,7 @@ class ImposeRequest extends FormRequest
             'back_offset_y' => ['required', 'numeric', 'between:-10,10'],
             'unprintable_margin_mm' => ['required', 'numeric', 'between:0,20'],
             'fold_marks' => ['boolean'],
+            'page_fit' => ['required', Rule::enum(PageFit::class)],
         ];
     }
 
@@ -45,6 +48,7 @@ class ImposeRequest extends FormRequest
             'back_offset_x' => 'offset X del dorso',
             'back_offset_y' => 'offset Y del dorso',
             'unprintable_margin_mm' => 'zona no imprimible',
+            'page_fit' => 'ajuste de página',
         ];
     }
 
@@ -68,6 +72,9 @@ class ImposeRequest extends FormRequest
 
     public function options(): PrintOptions
     {
-        return new PrintOptions(foldMarks: $this->boolean('fold_marks'));
+        return new PrintOptions(
+            foldMarks: $this->boolean('fold_marks'),
+            pageFit: $this->enum('page_fit', PageFit::class) ?? PageFit::Actual,
+        );
     }
 }

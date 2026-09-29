@@ -33,6 +33,7 @@ function impositionPayload(array $overrides = []): array
         'back_offset_y' => '-0.25',
         'unprintable_margin_mm' => '5',
         'fold_marks' => '1',
+        'page_fit' => 'actual',
         ...$overrides,
     ];
 }
@@ -110,14 +111,28 @@ it('valida las opciones', function (array $overrides, string $field) {
     'creep negativo' => [['creep_mm' => '-1'], 'creep_mm'],
     'offset enorme' => [['back_offset_x' => '50'], 'back_offset_x'],
     'sin archivo' => [['pdf' => null], 'pdf'],
+    'ajuste desconocido' => [['page_fit' => 'estirar'], 'page_fit'],
 ]);
 
 it('explica por qué no se puede imponer un PDF de páginas demasiado grandes', function () {
     $this->actingAs($this->user)
         ->post(route('imposition.store'), impositionPayload(['pdf' => uploadedTestPdf(4, new Size(210, 297))]))
-        ->assertSessionHasErrors(['pdf' => 'La página de 210.0 × 297.0 mm no cabe dos veces en la hoja de 279.4 × 215.9 mm.']);
+        ->assertSessionHasErrors(['pdf' => 'La página de 210.0 × 297.0 mm no cabe dos veces en la hoja de 279.4 × 215.9 mm. Usa «Ajustar» o «Llenar» para escalarla.']);
 
     expect(Storage::disk('local')->allFiles())->toBe([]);
+});
+
+it('impone páginas carta ajustándolas a media hoja', function () {
+    $response = $this->actingAs($this->user)->post(route('imposition.store'), impositionPayload([
+        'pdf' => uploadedTestPdf(8, new Size(215.9, 279.4)),
+        'page_fit' => 'fit',
+    ]));
+
+    $id = basename((string) $response->headers->get('Location'));
+    $response->assertSessionHasNoErrors();
+
+    $this->get(route('imposition.show', $id))
+        ->assertInertia(fn (Assert $page) => $page->where('imposition.options.page_fit', 'fit'));
 });
 
 it('descarga la hoja de calibración y el documento de prueba', function () {

@@ -34,6 +34,12 @@ setLayoutProps({
     ],
 });
 
+const fitLabels = {
+    actual: 'tamaño real',
+    fit: 'ajustada sin recortes',
+    fill: 'llenando la media hoja',
+} as const;
+
 const previewUrl = computed(() => pdf(props.imposition.id).url);
 const downloadUrl = computed(
     () => pdf(props.imposition.id, { query: { download: 1 } }).url,
@@ -77,7 +83,8 @@ const faceRanges = computed(() => {
                             ? 'hoja'
                             : 'hojas'
                     }}
-                    · creep {{ imposition.settings.creep_mm }} mm/hoja · dorso
+                    · {{ fitLabels[imposition.options.page_fit] }} · creep
+                    {{ imposition.settings.creep_mm }} mm/hoja · dorso
                     {{ imposition.printer.back_offset_x }},
                     {{ imposition.printer.back_offset_y }} mm
                 </p>

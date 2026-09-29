@@ -10,7 +10,12 @@ export type ImpositionDefaults = {
     back_offset_y: number;
     unprintable_margin_mm: number;
     fold_marks: boolean;
+    page_fit: PageFit;
 };
+
+export type PageFit = 'actual' | 'fit' | 'fill';
+
+export type PageFitOption = { value: PageFit; label: string };
 
 export type RecentImposition = {
     id: string;
@@ -36,7 +41,7 @@ export type StoredImposition = {
         back_offset_y: number;
         unprintable_margin_mm: number;
     };
-    options: { fold_marks: boolean };
+    options: { fold_marks: boolean; page_fit: PageFit };
 };
 
 export type ImpositionSummary = {

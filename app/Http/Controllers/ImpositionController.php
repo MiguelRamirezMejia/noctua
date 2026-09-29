@@ -7,6 +7,7 @@ use App\Actions\Imposition\StoredImposition;
 use App\Domain\Imposition\Imposer;
 use App\Domain\Imposition\Sheet;
 use App\Domain\Imposition\Signature;
+use App\Domain\Printing\PageFit;
 use App\Http\Requests\ImposeRequest;
 use App\Models\User;
 use Illuminate\Container\Attributes\CurrentUser;
@@ -36,7 +37,9 @@ class ImpositionController extends Controller
                 'back_offset_y' => 0,
                 'unprintable_margin_mm' => 5,
                 'fold_marks' => true,
+                'page_fit' => PageFit::Fit->value,
             ]),
+            'pageFits' => array_map(fn (PageFit $fit): array => ['value' => $fit->value, 'label' => $fit->label()], PageFit::cases()),
             'recent' => array_map(fn (StoredImposition $s): array => [
                 'id' => $s->id,
                 'name' => $s->info['original_name'],

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Printing\Pdf;
 
+use App\Domain\Printing\Clip;
 use App\Domain\Printing\Size;
 use setasign\Fpdi\Fpdi;
 
@@ -10,7 +11,9 @@ use setasign\Fpdi\Fpdi;
  */
 final class DeterministicFpdi extends Fpdi
 {
-    public function __construct(Size $sheet)
+    private const float POINTS_PER_MM = 72 / 25.4;
+
+    public function __construct(private readonly Size $sheet)
     {
         $short = min($sheet->widthMm, $sheet->heightMm);
         $long = max($sheet->widthMm, $sheet->heightMm);
@@ -36,6 +39,28 @@ final class DeterministicFpdi extends Fpdi
             parent::_putinfo();
         } finally {
             date_default_timezone_set($timezone);
+        }
+    }
+
+    /**
+     * Ejecuta el dibujo recortado al rectángulo dado (mm desde la esquina superior izquierda).
+     *
+     * @param  callable(): void  $draw
+     */
+    public function clipped(Clip $clip, callable $draw): void
+    {
+        $this->_out(sprintf(
+            'q %.3F %.3F %.3F %.3F re W n',
+            $clip->xMm * self::POINTS_PER_MM,
+            ($this->sheet->heightMm - $clip->yMm) * self::POINTS_PER_MM,
+            $clip->widthMm * self::POINTS_PER_MM,
+            -$clip->heightMm * self::POINTS_PER_MM,
+        ));
+
+        try {
+            $draw();
+        } finally {
+            $this->_out('Q');
         }
     }
 

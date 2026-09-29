@@ -17,10 +17,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { create, show } from '@/routes/imposition';
 import { calibration, testDocument } from '@/routes/printing';
-import type { ImpositionDefaults, RecentImposition } from '@/types/imposition';
+import type {
+    ImpositionDefaults,
+    PageFitOption,
+    RecentImposition,
+} from '@/types/imposition';
 
 const props = defineProps<{
     defaults: ImpositionDefaults;
+    pageFits: PageFitOption[];
     recent: RecentImposition[];
 }>();
 
@@ -73,15 +78,16 @@ const dateFormat = new Intl.DateTimeFormat('es', {
                 <CardHeader>
                     <CardTitle>Imponer un PDF</CardTitle>
                     <CardDescription>
-                        Todas las páginas deben tener el mismo tamaño y caber
-                        dos veces en la hoja (media carta o menor).
+                        Sirve cualquier PDF con páginas del mismo tamaño. Si son
+                        más grandes que media carta (por ejemplo, carta), usa
+                        «Ajustar» para reducirlas sin perder nada.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form
                         v-bind="ImpositionController.store.form()"
                         class="space-y-6"
-                        v-slot="{ errors, processing }"
+                        v-slot="{ errors, processing, progress }"
                     >
                         <div class="grid gap-2">
                             <Label for="pdf">PDF de páginas</Label>
@@ -93,6 +99,26 @@ const dateFormat = new Intl.DateTimeFormat('es', {
                                 required
                             />
                             <InputError :message="errors.pdf" />
+                        </div>
+
+                        <div class="grid gap-2">
+                            <Label for="page_fit">Ajuste de página</Label>
+                            <select
+                                id="page_fit"
+                                name="page_fit"
+                                :value="defaults.page_fit"
+                                class="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                            >
+                                <option
+                                    v-for="fit in pageFits"
+                                    :key="fit.value"
+                                    :value="fit.value"
+                                    class="bg-background"
+                                >
+                                    {{ fit.label }}
+                                </option>
+                            </select>
+                            <InputError :message="errors.page_fit" />
                         </div>
 
                         <fieldset class="grid gap-4 sm:grid-cols-2">
@@ -230,9 +256,31 @@ const dateFormat = new Intl.DateTimeFormat('es', {
                             </div>
                         </fieldset>
 
-                        <Button type="submit" :disabled="processing">
-                            {{ processing ? 'Imponiendo…' : 'Imponer PDF' }}
-                        </Button>
+                        <div class="flex flex-wrap items-center gap-4">
+                            <Button type="submit" :disabled="processing">
+                                {{ processing ? 'Procesando…' : 'Imponer PDF' }}
+                            </Button>
+
+                            <div
+                                v-if="processing"
+                                class="flex min-w-48 flex-1 items-center gap-3 text-sm text-muted-foreground"
+                                role="status"
+                                aria-live="polite"
+                            >
+                                <progress
+                                    class="h-2 flex-1 overflow-hidden rounded-full [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary"
+                                    max="100"
+                                    :value="progress?.percentage ?? 0"
+                                />
+                                <span class="tabular-nums">
+                                    {{
+                                        (progress?.percentage ?? 0) < 100
+                                            ? `Subiendo ${progress?.percentage ?? 0} %`
+                                            : 'Imponiendo…'
+                                    }}
+                                </span>
+                            </div>
+                        </div>
                     </Form>
                 </CardContent>
             </Card>

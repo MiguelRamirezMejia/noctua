@@ -38,7 +38,7 @@ function facesText(string $path): array
 {
     $faces = [];
     for ($face = 1; $face <= pdfPages($path); $face++) {
-        $text = Process::run(['pdftotext', '-layout', '-f', (string) $face, '-l', (string) $face, $path, '-'])->throw()->output();
+        $text = Process::timeout(30)->run(['pdftotext', '-layout', '-f', (string) $face, '-l', (string) $face, $path, '-'])->throw()->output();
         preg_match_all('/P.gina (\d+)/u', $text, $m);
         $faces[] = array_map(intval(...), $m[1]);
     }

@@ -1,0 +1,2 @@
+Fuentes de folios: licencia SIL Open Font License 1.1, descargadas de Google Fonts.
+Nunito, Lora, EB Garamond, Andika y Crimson Pro. Libertinus Serif viene incluida en Typst.

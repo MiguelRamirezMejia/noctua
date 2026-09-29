@@ -7,6 +7,7 @@ use App\Domain\Printing\Pdf\PdfImposer;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
 use App\Models\User;
+use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -18,13 +19,16 @@ final readonly class ImposeUploadedPdf
         private PdfImposer $imposer,
     ) {}
 
-    public function handle(User $user, UploadedFile $pdf, ImpositionSettings $settings, PrinterProfile $printer, PrintOptions $options): StoredImposition
+    /**
+     * @param  UploadedFile|string  $pdf  Archivo subido o ruta a un PDF en disco.
+     */
+    public function handle(User $user, UploadedFile|string $pdf, ImpositionSettings $settings, PrinterProfile $printer, PrintOptions $options, ?string $name = null): StoredImposition
     {
         $id = Str::lower((string) Str::ulid());
         $directory = StoredImposition::directoryFor($user, $id);
         $disk = Storage::disk('local');
 
-        $disk->putFileAs($directory, $pdf, StoredImposition::SOURCE);
+        $disk->putFileAs($directory, is_string($pdf) ? new File($pdf) : $pdf, StoredImposition::SOURCE);
 
         try {
             $plan = $this->imposer->impose(
@@ -41,7 +45,7 @@ final readonly class ImposeUploadedPdf
         }
 
         $stored = new StoredImposition($id, $directory, $settings, $printer, $options, [
-            'original_name' => $pdf->getClientOriginalName(),
+            'original_name' => $name ?? ($pdf instanceof UploadedFile ? $pdf->getClientOriginalName() : basename($pdf)),
             'created_at' => now()->toIso8601String(),
             'page_count' => $plan->spec->pageCount,
         ]);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { BookOpenText, LayoutGrid } from '@lucide/vue';
+import { BookOpenText, LayoutGrid, Library } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -14,6 +14,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as books } from '@/routes/books';
 import { create as imposition } from '@/routes/imposition';
 import type { NavItem } from '@/types';
 
@@ -24,7 +25,12 @@ const mainNavItems: NavItem[] = [
         icon: LayoutGrid,
     },
     {
-        title: 'Imposición',
+        title: 'Libros',
+        href: books(),
+        icon: Library,
+    },
+    {
+        title: 'Imposición rápida',
         href: imposition(),
         icon: BookOpenText,
     },

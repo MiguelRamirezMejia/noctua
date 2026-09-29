@@ -19,6 +19,12 @@ composer setup
 composer dev
 ```
 
+## Libros desde un PDF ya maquetado
+
+En **Libros** se sube el PDF (Canva, Word, InDesign…) y se edita sin tocar el original: reordenar (arrastrando o con botones), quitar y devolver páginas, duplicar, insertar blancos y numerar páginas (desde qué página, con qué número, posición, tipo de letra, tamaño y margen; se puede quitar el número de páginas concretas). Al imprimir, Noctua compone el libro con Typst (folios) y FPDI y lo impone por cuadernillos. Las páginas más grandes que media carta se ajustan sin recortes.
+
+En Windows, fija en el `.env` las rutas absolutas de `NOCTUA_TYPST` y `NOCTUA_PDFTOPPM`.
+
 ## Imposición desde la consola (fase 1)
 
 ```bash

@@ -8,6 +8,7 @@ use App\Domain\Imposition\Imposer;
 use App\Domain\Imposition\Sheet;
 use App\Domain\Imposition\Signature;
 use App\Domain\Printing\PageFit;
+use App\Http\PrintDefaults;
 use App\Http\Requests\ImposeRequest;
 use App\Models\User;
 use Illuminate\Container\Attributes\CurrentUser;
@@ -22,23 +23,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ImpositionController extends Controller
 {
-    private const string DEFAULTS_SESSION_KEY = 'imposition.defaults';
-
     public function create(Request $request, #[CurrentUser] User $user): Response
     {
         return Inertia::render('imposition/Create', [
-            'defaults' => $request->session()->get(self::DEFAULTS_SESSION_KEY, [
-                'sheets_per_signature' => 4,
-                'short_last_signature' => false,
-                'creep_mm' => 0,
-                'front_offset_x' => 0,
-                'front_offset_y' => 0,
-                'back_offset_x' => 0,
-                'back_offset_y' => 0,
-                'unprintable_margin_mm' => 5,
-                'fold_marks' => true,
-                'page_fit' => PageFit::Fit->value,
-            ]),
+            'defaults' => PrintDefaults::from($request->session()->get(PrintDefaults::SESSION_KEY), PageFit::Fit),
             'pageFits' => array_map(fn (PageFit $fit): array => ['value' => $fit->value, 'label' => $fit->label()], PageFit::cases()),
             'recent' => array_map(fn (StoredImposition $s): array => [
                 'id' => $s->id,
@@ -63,7 +51,7 @@ class ImpositionController extends Controller
             throw ValidationException::withMessages(['pdf' => $e->getMessage()]);
         }
 
-        $request->session()->put(self::DEFAULTS_SESSION_KEY, $request->safe()->except('pdf'));
+        $request->session()->put(PrintDefaults::SESSION_KEY, $request->defaults());
 
         return to_route('imposition.show', $stored->id);
     }

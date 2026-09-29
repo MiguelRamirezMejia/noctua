@@ -87,6 +87,30 @@ it('recuerda la configuración y lista las imposiciones recientes', function () 
             ->where('recent.0.name', 'mi-libro.pdf'));
 });
 
+it('recuerda las opciones con su tipo para que el formulario las seleccione', function () {
+    $this->actingAs($this->user)->post(route('imposition.store'), impositionPayload([
+        'sheets_per_signature' => '4',
+        'short_last_signature' => '0',
+        'back_offset_x' => '0.5',
+    ]));
+
+    $this->get(route('imposition.create'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('defaults.sheets_per_signature', 4)
+            ->where('defaults.short_last_signature', false)
+            ->where('defaults.back_offset_x', 0.5));
+});
+
+it('corrige opciones antiguas guardadas como texto en la sesión', function () {
+    $this->actingAs($this->user)
+        ->withSession(['imposition.defaults' => ['sheets_per_signature' => '4', 'short_last_signature' => '0', 'fold_marks' => '1']])
+        ->get(route('imposition.create'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('defaults.sheets_per_signature', 4)
+            ->where('defaults.short_last_signature', false)
+            ->where('defaults.fold_marks', true));
+});
+
 it('no deja ver imposiciones de otro usuario', function () {
     $response = $this->actingAs($this->user)->post(route('imposition.store'), impositionPayload());
     $id = basename((string) $response->headers->get('Location'));

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\BookPreviewController;
 use App\Http\Controllers\FontController;
 use App\Http\Controllers\ImpositionController;
 use App\Http\Controllers\PrintingToolsController;
@@ -19,6 +20,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('libros/{book}', [BookController::class, 'destroy'])->name('books.destroy');
     Route::get('libros/{book}/miniaturas/{page}', [BookController::class, 'thumbnail'])->whereNumber('page')->name('books.thumbnail');
     Route::post('libros/{book}/imprimir', [BookController::class, 'print'])->name('books.print');
+    Route::get('libros/{book}/paginas/{page}/imagen', [BookPreviewController::class, 'pageImage'])->whereNumber('page')->name('books.page-image');
+    Route::post('libros/{book}/vista-previa', [BookPreviewController::class, 'preview'])->name('books.preview');
 
     Route::get('fuentes', [FontController::class, 'index'])->name('fonts.index');
     Route::post('fuentes', [FontController::class, 'store'])->name('fonts.store');

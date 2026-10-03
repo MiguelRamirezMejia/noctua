@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Actions\Book\RenderPageImage;
 use App\Actions\Book\RenderThumbnails;
 use App\Domain\Typesetting\Typst\PageLayers;
 use App\Domain\Typesetting\Typst\TypstRunner;
@@ -27,6 +28,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PageLayers::class, fn (Application $app): PageLayers => new PageLayers(
             $app->make(TypstRunner::class),
             resource_path('typst/capas.typ'),
+        ));
+
+        $this->app->singleton(RenderPageImage::class, fn (): RenderPageImage => new RenderPageImage(
+            config()->string('noctua.binaries.pdftoppm'),
+            config()->integer('noctua.process_timeout'),
         ));
 
         $this->app->singleton(RenderThumbnails::class, fn (): RenderThumbnails => new RenderThumbnails(

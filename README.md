@@ -25,6 +25,10 @@ En **Libros** se sube el PDF (Canva, Word, InDesign…) y se edita sin tocar el 
 
 En Windows, fija en el `.env` las rutas absolutas de `NOCTUA_TYPST` y `NOCTUA_PDFTOPPM`.
 
+**Editor de pliego** (botón «Editar» o doble clic sobre un pliego): las dos páginas en grande para añadir cuadros de texto (fuente, tamaño, color, alineación y palabras sueltas en negrita, cursiva o de otro color), rectángulos y fondos de color por página (detrás de la página o teñida). «Vista exacta» muestra el pliego compuesto tal como se imprimirá.
+
+**Fuentes**: `php artisan noctua:fonts:install` descarga el catálogo de fuentes libres (44 familias, también lo hace `composer setup`). Cada usuario puede subir sus propias fuentes TTF/OTF desde la sección Fuentes.
+
 ## Imposición desde la consola (fase 1)
 
 ```bash

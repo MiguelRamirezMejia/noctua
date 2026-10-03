@@ -8,7 +8,7 @@ import {
     Trash2,
 } from '@lucide/vue';
 import { computed } from 'vue';
-import type { BookPage, FolioSettings } from '@/types/book';
+import type { BookPage, FolioSettings, PageElement } from '@/types/book';
 
 const props = defineProps<{
     page: BookPage;
@@ -69,6 +69,47 @@ const folioStyle = computed(() => {
     return style;
 });
 
+const background = computed(() => props.page.design.background);
+
+/** Elementos del diseño en proporción a la miniatura (porcentajes y unidades de contenedor). */
+function elementStyle(el: PageElement): Record<string, string> {
+    const box = {
+        left: `${(el.x / props.widthMm) * 100}%`,
+        top: `${(el.y / props.heightMm) * 100}%`,
+        width: `${(el.width / props.widthMm) * 100}%`,
+        height: `${(el.height / props.heightMm) * 100}%`,
+    };
+
+    if (el.type === 'rect') {
+        return {
+            ...box,
+            backgroundColor: el.fill,
+            opacity: String(el.opacity),
+        };
+    }
+
+    const sizeMm = (el.size_pt * 25.4) / 72;
+
+    return {
+        ...box,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent:
+            el.valign === 'middle'
+                ? 'center'
+                : el.valign === 'bottom'
+                  ? 'flex-end'
+                  : 'flex-start',
+        whiteSpace: 'pre-wrap',
+        fontFamily: `"${el.font}"`,
+        fontSize: `${(sizeMm / props.widthMm) * 100}cqw`,
+        lineHeight: String(el.line_height),
+        color: el.color,
+        textAlign: el.align,
+        backgroundColor: el.fill ?? 'transparent',
+    };
+}
+
 const label = computed(() =>
     props.page.source === null
         ? `Página ${props.position}: en blanco`
@@ -91,18 +132,45 @@ const label = computed(() =>
             class="[container-type:size] relative w-full overflow-hidden border bg-background shadow-sm"
             :style="{ aspectRatio: `${widthMm} / ${heightMm}` }"
         >
+            <div
+                v-if="background?.mode === 'behind'"
+                class="absolute inset-0"
+                :style="{ backgroundColor: background.color }"
+            />
             <img
                 v-if="thumbnailUrl"
                 :src="thumbnailUrl"
                 alt=""
-                class="pointer-events-none size-full object-fill select-none"
+                class="pointer-events-none relative size-full object-fill select-none"
                 loading="lazy"
             />
             <div
-                v-else
+                v-else-if="!background"
                 class="flex size-full items-center justify-center bg-[repeating-linear-gradient(135deg,transparent,transparent_6px,var(--color-muted)_6px,var(--color-muted)_7px)] text-xs text-muted-foreground uppercase"
             >
                 en blanco
+            </div>
+            <div
+                v-if="background?.mode === 'tint'"
+                class="absolute inset-0 mix-blend-multiply"
+                :style="{ backgroundColor: background.color }"
+            />
+            <div
+                v-for="el in page.design.elements"
+                :key="el.id"
+                class="pointer-events-none absolute overflow-visible"
+                :style="elementStyle(el)"
+            >
+                <span
+                    v-for="(span, i) in el.type === 'text' ? el.spans : []"
+                    :key="i"
+                    :style="{
+                        fontWeight: span.bold ? '700' : '400',
+                        fontStyle: span.italic ? 'italic' : 'normal',
+                        ...(span.color ? { color: span.color } : {}),
+                    }"
+                    >{{ span.text }}</span
+                >
             </div>
             <span
                 v-if="folioText"

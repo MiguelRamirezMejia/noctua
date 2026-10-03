@@ -215,8 +215,7 @@ it('imprime fondos de color y cuadros de texto con fragmentos en negrita', funct
     $image = imagecreatefrompng($composed.'-img.png');
     $corner = imagecolorat($image, 2, 2);
 
-    // pdftotext deduce los espacios por distancia y falla al cambiar de variante: se comparan las palabras.
-    expect(preg_replace('/\s+/', '', $text))->toContain('Habíaunavezundragón')
+    expect(preg_replace('/\s+/', ' ', $text))->toContain('Había una vez un dragón')
         ->and($fonts)->toContain('Nunito')
         ->and($png)->toBeTrue()
         ->and([($corner >> 16) & 0xFF, ($corner >> 8) & 0xFF, $corner & 0xFF])->toBe([0, 0, 0]);
@@ -226,6 +225,54 @@ it('imprime fondos de color y cuadros de texto con fragmentos en negrita', funct
     $tinted = imagecolorat(imagecreatefrompng($composed.'-p2.png'), 2, 2);
     expect([($tinted >> 16) & 0xFF, ($tinted >> 8) & 0xFF, $tinted & 0xFF])->toBe([0xBF, 0xDB, 0xFE]);
 })->skip(fn () => ! binaryAvailable('pdftoppm') || ! binaryAvailable('typst') || (new ExecutableFinder)->find('pdftotext') === null, 'Requiere Typst y Poppler.');
+
+it('conserva los espacios en los bordes de cada fragmento de texto', function () {
+    $book = Book::factory()->for($this->user)->create();
+    $spans = [
+        ['text' => 'Había una vez un ', 'bold' => false, 'italic' => false, 'color' => null],
+        ['text' => 'dragón', 'bold' => true, 'italic' => false, 'color' => null],
+        ['text' => ' muy rápido. ', 'bold' => false, 'italic' => false, 'color' => null],
+    ];
+
+    $this->actingAs($this->user)
+        ->put(route('books.update', $book), editPayload($book, [[
+            'id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => null, 'elements' => [[
+                'id' => 't', 'type' => 'text', 'x' => 0, 'y' => 0, 'width' => 50, 'height' => 20, 'font' => 'Nunito', 'spans' => $spans,
+            ]]],
+        ]]))
+        ->assertSessionHasNoErrors();
+
+    expect($book->refresh()->sequence()->items[0]->design->textBoxes()[0]->plainText())->toBe('Había una vez un dragón muy rápido. ');
+});
+
+it('sirve las páginas del PDF en alta resolución para el editor', function () {
+    $book = uploadBook($this->user, 2);
+
+    $this->get(route('books.page-image', [$book, 2]))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+    $this->get(route('books.page-image', [$book, 3]))->assertNotFound();
+    $this->actingAs(User::factory()->create())->get(route('books.page-image', [$book, 1]))->assertForbidden();
+})->skip(fn () => ! binaryAvailable('pdftoppm'), 'Requiere pdftoppm (poppler-utils).');
+
+it('compone la vista exacta de un pliego con cambios sin guardar', function () {
+    $book = uploadBook($this->user, 4);
+    $pages = editPayload($book, [
+        ['id' => 'p1', 'source' => 1, 'folio' => true],
+        ['id' => 'b', 'source' => null, 'folio' => true, 'design' => ['background' => ['color' => '#000000', 'mode' => 'behind'], 'elements' => []]],
+        ['id' => 'p2', 'source' => 2, 'folio' => true],
+    ]);
+
+    $response = $this->postJson(route('books.preview', $book), [...$pages, 'positions' => [2, 3]])->assertOk();
+    $images = $response->json('images');
+
+    expect(array_keys($images))->toBe([2, 3])
+        ->and($images[2])->toStartWith('data:image/png;base64,');
+
+    $black = imagecreatefromstring(base64_decode(substr($images[2], strlen('data:image/png;base64,'))));
+    expect(imagecolorat($black, 5, 5) & 0xFFFFFF)->toBe(0x000000)
+        ->and($book->refresh()->sequence()->count())->toBe(4);
+
+    $this->postJson(route('books.preview', $book), [...$pages, 'positions' => [9]])->assertUnprocessable();
+})->skip(fn () => ! binaryAvailable('pdftoppm') || ! binaryAvailable('typst'), 'Requiere Typst y Poppler.');
 
 it('rechaza textos con fuentes no disponibles', function () {
     $book = Book::factory()->for($this->user)->create();

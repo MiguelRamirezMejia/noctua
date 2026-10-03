@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { Form, Head, router, setLayoutProps, useForm } from '@inertiajs/vue3';
-import { Printer, RotateCcw, Save, Trash2, Undo2 } from '@lucide/vue';
+import {
+    PencilRuler,
+    Printer,
+    RotateCcw,
+    Save,
+    Trash2,
+    Undo2,
+} from '@lucide/vue';
 import { computed, onMounted, ref, toRaw } from 'vue';
 import BookController from '@/actions/App/Http/Controllers/BookController';
+import SpreadEditor from '@/components/book/editor/SpreadEditor.vue';
 import PageCard from '@/components/book/PageCard.vue';
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -14,9 +22,17 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { cloneData } from '@/lib/richText';
 import { loadFontFaces } from '@/composables/useFontFaces';
 import { Label } from '@/components/ui/label';
-import { destroy, edit, index, update } from '@/routes/books';
+import {
+    destroy,
+    edit,
+    index,
+    pageImage,
+    preview,
+    update,
+} from '@/routes/books';
 import type {
     BookPage,
     EditableBook,
@@ -52,7 +68,7 @@ const form = useForm<{
     folios: FolioSettings;
 }>({
     title: props.book.title,
-    pages: structuredClone(props.book.pages),
+    pages: cloneData(props.book.pages),
     folios: { ...props.book.folios },
 });
 
@@ -123,7 +139,7 @@ function duplicate(index: number) {
     const page = form.pages[index];
     // Copia profunda: el diseño de la copia se edita por separado.
     form.pages.splice(index + 1, 0, {
-        ...structuredClone(toRaw(page)),
+        ...cloneData(page),
         id: uid(`p${page.source}`),
     });
 }
@@ -201,6 +217,11 @@ function dropOn(index: number) {
 }
 
 // --- Guardar ---
+// --- Editor de pliego ---
+const openSpread = ref<number | null>(null);
+const pageImageBase = pageImage({ book: props.book.id, page: 0 }).url;
+const previewUrl = preview(props.book.id).url;
+
 function save() {
     form.put(update(props.book.id).url, { preserveScroll: true });
 }
@@ -292,8 +313,9 @@ const offsetFields = [
                     <li
                         v-for="(spread, s) in spreads"
                         :key="s"
-                        class="grid grid-cols-2"
+                        class="group/spread relative grid grid-cols-2"
                         :aria-label="`Pliego ${s + 1}`"
+                        @dblclick="openSpread = s"
                     >
                         <template
                             v-for="i in [spread.left, spread.right]"
@@ -324,6 +346,14 @@ const offsetFields = [
                             />
                             <div v-else aria-hidden="true" />
                         </template>
+                        <Button
+                            size="sm"
+                            class="absolute bottom-7 left-1/2 -translate-x-1/2 opacity-0 shadow transition group-focus-within/spread:opacity-100 group-hover/spread:opacity-100"
+                            :aria-label="`Editar el pliego ${s + 1}`"
+                            @click="openSpread = s"
+                        >
+                            <PencilRuler /> Editar
+                        </Button>
                     </li>
                 </ol>
             </section>
@@ -681,4 +711,21 @@ const offsetFields = [
             </aside>
         </div>
     </div>
+    <SpreadEditor
+        v-if="openSpread !== null"
+        :pages="form.pages"
+        :start-spread="openSpread"
+        :width-mm="book.width_mm"
+        :height-mm="book.height_mm"
+        :folios="form.folios"
+        :folio-texts="folioTexts"
+        :fonts="fonts"
+        :print-scale="previewScale"
+        :page-image-base="pageImageBase"
+        :preview-url="previewUrl"
+        :dirty="form.isDirty"
+        :saving="form.processing"
+        @close="openSpread = null"
+        @save="save"
+    />
 </template>

@@ -14,7 +14,10 @@ use App\Domain\Printing\Size;
  */
 final class PdfComposer
 {
-    public function compose(string $sourcePath, PageSequence $sequence, string $outputPath, ?string $overPath = null, ?string $underPath = null): void
+    /**
+     * @param  list<int>|null  $only  Posiciones del libro a incluir (p. ej. un pliego para la vista previa).
+     */
+    public function compose(string $sourcePath, PageSequence $sequence, string $outputPath, ?string $overPath = null, ?string $underPath = null, ?array $only = null): void
     {
         $page = $this->pageSize($sourcePath);
         $pdf = new DeterministicFpdi($page);
@@ -22,8 +25,8 @@ final class PdfComposer
         try {
             $pdf->setSourceFile($sourcePath);
             $templates = [];
-            foreach ($sequence->items as $item) {
-                if ($item->sourcePage !== null) {
+            foreach ($sequence->items as $index => $item) {
+                if ($item->sourcePage !== null && ($only === null || in_array($index + 1, $only, true))) {
                     $templates[$item->sourcePage] ??= $pdf->importPage($item->sourcePage);
                 }
             }
@@ -32,8 +35,12 @@ final class PdfComposer
             $over = $overPath === null ? [] : $this->importLayer($pdf, $overPath, $sequence);
 
             foreach ($sequence->items as $index => $item) {
-                $pdf->AddPage();
                 $position = $index + 1;
+                if ($only !== null && ! in_array($position, $only, true)) {
+                    continue;
+                }
+
+                $pdf->AddPage();
 
                 if (isset($under[$position])) {
                     $pdf->useTemplate($under[$position], 0, 0, $page->widthMm, $page->heightMm);

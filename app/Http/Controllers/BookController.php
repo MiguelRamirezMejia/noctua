@@ -4,13 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Actions\Book\CreateBookFromPdf;
 use App\Actions\Book\PrintBook;
-use App\Domain\Book\Design\InvalidPageDesign;
-use App\Domain\Book\Design\PageDesign;
 use App\Domain\Book\FolioPosition;
-use App\Domain\Book\FolioSettings;
-use App\Domain\Book\InvalidPageSequence;
 use App\Domain\Book\PageItem;
-use App\Domain\Book\PageSequence;
 use App\Domain\Printing\PageFit;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\SheetLayout;
@@ -18,6 +13,7 @@ use App\Domain\Printing\Size;
 use App\Domain\Typesetting\TypesettingFailed;
 use App\Fonts\FontLibrary;
 use App\Http\PrintDefaults;
+use App\Http\Requests\BookContentRequest;
 use App\Http\Requests\PrintSettingsRequest;
 use App\Models\Book;
 use App\Models\User;
@@ -27,7 +23,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -119,75 +114,18 @@ class BookController extends Controller
         ]);
     }
 
-    public function update(Request $request, Book $book, FontLibrary $library, #[CurrentUser] User $user): RedirectResponse
+    public function update(BookContentRequest $request, Book $book): RedirectResponse
     {
-        Gate::authorize('update', $book);
+        $request->validate(['title' => ['required', 'string', 'max:200']]);
 
-        $fonts = $library->families($user);
-        $request->validate([
-            'title' => ['required', 'string', 'max:200'],
-            'pages' => ['required', 'array', 'min:1', 'max:2000'],
-            'pages.*.id' => ['required', 'string', 'max:40'],
-            'pages.*.source' => ['nullable', 'integer', 'min:1', 'max:'.$book->source_page_count],
-            'pages.*.folio' => ['required', 'boolean'],
-            'pages.*.design' => ['nullable', 'array'],
-            'folios.enabled' => ['required', 'boolean'],
-            'folios.first_numbered_page' => ['required', 'integer', 'min:1'],
-            'folios.start_number' => ['required', 'integer', 'min:0', 'max:9999'],
-            'folios.position' => ['required', Rule::enum(FolioPosition::class)],
-            'folios.font' => ['required', Rule::in($fonts)],
-            'folios.size_pt' => ['required', 'numeric', 'between:4,48'],
-            'folios.margin_mm' => ['required', 'numeric', 'between:0,60'],
-        ]);
-
-        try {
-            $sequence = new PageSequence($book->source_page_count, $this->pageItems($request->array('pages')));
-            $this->ensureFontsAvailable($sequence, $fonts);
-            $book->setSequence($sequence);
-
-            $book->setFolioSettings(new FolioSettings(
-                enabled: $request->boolean('folios.enabled'),
-                firstNumberedPage: $request->integer('folios.first_numbered_page'),
-                startNumber: $request->integer('folios.start_number'),
-                position: $request->enum('folios.position', FolioPosition::class) ?? FolioPosition::BottomCenter,
-                font: $request->string('folios.font')->toString(),
-                sizePt: $request->float('folios.size_pt'),
-                marginMm: $request->float('folios.margin_mm'),
-            ));
-        } catch (InvalidPageSequence|InvalidPageDesign $e) {
-            throw ValidationException::withMessages(['pages' => $e->getMessage()]);
-        }
-
+        $book->setSequence($request->sequence());
+        $book->setFolioSettings($request->folioSettings());
         $book->title = $request->string('title')->trim()->toString();
         $book->save();
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Cambios guardados.']);
 
         return back();
-    }
-
-    /**
-     * @param  array<mixed>  $pages  Ya validadas por las reglas de update().
-     * @return list<PageItem>
-     */
-    private function pageItems(array $pages): array
-    {
-        $items = [];
-        foreach ($pages as $page) {
-            if (! is_array($page) || ! is_string($page['id'] ?? null)) {
-                continue;
-            }
-
-            $source = filter_var($page['source'] ?? null, FILTER_VALIDATE_INT);
-            $items[] = new PageItem(
-                $page['id'],
-                is_int($source) ? $source : null,
-                filter_var($page['folio'] ?? true, FILTER_VALIDATE_BOOLEAN),
-                PageDesign::fromArray($page['design'] ?? null),
-            );
-        }
-
-        return $items;
     }
 
     /**
@@ -200,20 +138,6 @@ class BookController extends Controller
         $fits = $book->pageSize()->widthMm <= $sheet->widthMm / 2 + 0.01 && $book->pageSize()->heightMm <= $sheet->heightMm + 0.01;
 
         return (new SheetLayout($sheet, $book->pageSize(), new PrinterProfile, $fits ? PageFit::Actual : PageFit::Fit))->scale;
-    }
-
-    /**
-     * @param  list<string>  $fonts
-     */
-    private function ensureFontsAvailable(PageSequence $sequence, array $fonts): void
-    {
-        foreach ($sequence->items as $index => $item) {
-            foreach ($item->design->textBoxes() as $box) {
-                if (! in_array($box->font, $fonts, true)) {
-                    throw new InvalidPageDesign('La fuente «'.$box->font.'» de la página '.($index + 1).' no está disponible.');
-                }
-            }
-        }
     }
 
     public function destroy(Book $book): RedirectResponse

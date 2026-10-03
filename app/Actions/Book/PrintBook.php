@@ -4,6 +4,8 @@ namespace App\Actions\Book;
 
 use App\Actions\Imposition\ImposeUploadedPdf;
 use App\Actions\Imposition\StoredImposition;
+use App\Domain\Book\FolioSettings;
+use App\Domain\Book\PageSequence;
 use App\Domain\Imposition\ImpositionSettings;
 use App\Domain\Printing\Pdf\PdfComposer;
 use App\Domain\Printing\PrinterProfile;
@@ -45,10 +47,14 @@ final readonly class PrintBook
     /**
      * PDF de páginas del libro, ya editado, sin imponer.
      */
-    public function compose(User $user, Book $book, PrinterProfile $printer, PrintOptions $options, string $outputPath): void
+    /**
+     * @param  PageSequence|null  $sequence  Páginas a componer; por defecto, las guardadas.
+     * @param  list<int>|null  $only  Posiciones a incluir (vista previa de un pliego).
+     */
+    public function compose(User $user, Book $book, PrinterProfile $printer, PrintOptions $options, string $outputPath, ?PageSequence $sequence = null, ?FolioSettings $folios = null, ?array $only = null): void
     {
-        $sequence = $book->sequence();
-        $folios = $book->folioSettings();
+        $sequence ??= $book->sequence();
+        $folios ??= $book->folioSettings();
         $page = $book->pageSize();
         $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'noctua-capas-'.bin2hex(random_bytes(6));
         $under = $this->layers->needsUnder($sequence) ? "{$tmp}-debajo.pdf" : null;
@@ -67,7 +73,7 @@ final readonly class PrintBook
                 $this->layers->render('encima', $sequence, $folios, $page, $scale, $fontPaths, $over);
             }
 
-            $this->composer->compose($book->sourcePath(), $sequence, $outputPath, $over, $under);
+            $this->composer->compose($book->sourcePath(), $sequence, $outputPath, $over, $under, $only);
         } finally {
             foreach ([$under, $over] as $file) {
                 if ($file !== null && is_file($file)) {

@@ -8,13 +8,18 @@
         "dev": "vp dev",
         "check": "vp check",
         "check:fix": "vp check --fix",
-        "types:check": "vue-tsc --noEmit"
+        "types:check": "vue-tsc --noEmit",
+        "test:js": "vp test run"
     },
     "dependencies": {
         "@inertiajs/vite": "^3.0.0",
         "@inertiajs/vue3": "^3.0.0",
         "@laravel/passkeys": "^0.2.0",
         "@lucide/vue": "^1.17.0",
+        "@tiptap/extension-text-style": "^3.31.4",
+        "@tiptap/pm": "^3.31.4",
+        "@tiptap/starter-kit": "^3.31.4",
+        "@tiptap/vue-3": "^3.31.4",
         "@vueuse/core": "^12.8.2",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",

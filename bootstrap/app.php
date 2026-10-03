@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Los espacios al principio o al final de un fragmento son parte del texto
+        // («un » + «dragón»): no se recortan.
+        $middleware->trimStrings(except: ['pages.*.design.elements.*.spans.*.text']);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

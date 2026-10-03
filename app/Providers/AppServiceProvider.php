@@ -3,7 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Book\RenderThumbnails;
-use App\Domain\Typesetting\Typst\FolioOverlay;
+use App\Domain\Typesetting\Typst\PageLayers;
 use App\Domain\Typesetting\Typst\TypstRunner;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Foundation\Application;
@@ -24,10 +24,9 @@ class AppServiceProvider extends ServiceProvider
             config()->integer('noctua.process_timeout'),
         ));
 
-        $this->app->singleton(FolioOverlay::class, fn (Application $app): FolioOverlay => new FolioOverlay(
+        $this->app->singleton(PageLayers::class, fn (Application $app): PageLayers => new PageLayers(
             $app->make(TypstRunner::class),
-            resource_path('typst/folios.typ'),
-            [public_path('fonts/folios')],
+            resource_path('typst/capas.typ'),
         ));
 
         $this->app->singleton(RenderThumbnails::class, fn (): RenderThumbnails => new RenderThumbnails(

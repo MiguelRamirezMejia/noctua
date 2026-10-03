@@ -16,6 +16,7 @@
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
         "laravel/wayfinder": "^0.1.14",
+        "phenx/php-font-lib": "^1.0",
         "setasign/fpdf": "^1.9",
         "setasign/fpdi": "^2.6"
     },
@@ -50,6 +51,7 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "@php artisan key:generate",
             "@php artisan migrate --force",
+            "@php artisan noctua:fonts:install",
             "npm install",
             "npm run build"
         ],

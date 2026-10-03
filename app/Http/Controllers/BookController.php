@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Actions\Book\CreateBookFromPdf;
 use App\Actions\Book\PrintBook;
+use App\Domain\Book\Design\InvalidPageDesign;
+use App\Domain\Book\Design\PageDesign;
 use App\Domain\Book\FolioPosition;
 use App\Domain\Book\FolioSettings;
 use App\Domain\Book\InvalidPageSequence;
@@ -14,6 +16,7 @@ use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\SheetLayout;
 use App\Domain\Printing\Size;
 use App\Domain\Typesetting\TypesettingFailed;
+use App\Fonts\FontLibrary;
 use App\Http\PrintDefaults;
 use App\Http\Requests\PrintSettingsRequest;
 use App\Models\Book;
@@ -74,7 +77,7 @@ class BookController extends Controller
         return to_route('books.edit', $book);
     }
 
-    public function edit(Request $request, Book $book): Response
+    public function edit(Request $request, Book $book, FontLibrary $library, #[CurrentUser] User $user): Response
     {
         Gate::authorize('view', $book);
 
@@ -92,6 +95,7 @@ class BookController extends Controller
                     'id' => $item->id,
                     'source' => $item->sourcePage,
                     'folio' => $item->showFolio,
+                    'design' => $item->design->toArray(),
                 ], $book->sequence()->items),
                 'folios' => [
                     'enabled' => $folios->enabled,
@@ -104,10 +108,7 @@ class BookController extends Controller
                 ],
             ],
             'thumbnailBase' => route('books.thumbnail', [$book, 0]),
-            'fonts' => array_map(fn (string $family, ?string $file): array => [
-                'family' => $family,
-                'url' => $file === null ? null : asset("fonts/folios/{$file}"),
-            ], array_keys($this->folioFonts()), array_values($this->folioFonts())),
+            'fonts' => $library->catalogFor($user),
             'positions' => array_map(fn (FolioPosition $p): array => ['value' => $p->value, 'label' => $p->label()], FolioPosition::cases()),
             'pageFits' => array_map(fn (PageFit $fit): array => ['value' => $fit->value, 'label' => $fit->label()], PageFit::cases()),
             'printDefaults' => PrintDefaults::from(
@@ -118,17 +119,18 @@ class BookController extends Controller
         ]);
     }
 
-    public function update(Request $request, Book $book): RedirectResponse
+    public function update(Request $request, Book $book, FontLibrary $library, #[CurrentUser] User $user): RedirectResponse
     {
         Gate::authorize('update', $book);
 
-        $fonts = array_keys($this->folioFonts());
+        $fonts = $library->families($user);
         $request->validate([
             'title' => ['required', 'string', 'max:200'],
             'pages' => ['required', 'array', 'min:1', 'max:2000'],
             'pages.*.id' => ['required', 'string', 'max:40'],
             'pages.*.source' => ['nullable', 'integer', 'min:1', 'max:'.$book->source_page_count],
             'pages.*.folio' => ['required', 'boolean'],
+            'pages.*.design' => ['nullable', 'array'],
             'folios.enabled' => ['required', 'boolean'],
             'folios.first_numbered_page' => ['required', 'integer', 'min:1'],
             'folios.start_number' => ['required', 'integer', 'min:0', 'max:9999'],
@@ -139,7 +141,9 @@ class BookController extends Controller
         ]);
 
         try {
-            $book->setSequence(new PageSequence($book->source_page_count, $this->pageItems($request->array('pages'))));
+            $sequence = new PageSequence($book->source_page_count, $this->pageItems($request->array('pages')));
+            $this->ensureFontsAvailable($sequence, $fonts);
+            $book->setSequence($sequence);
 
             $book->setFolioSettings(new FolioSettings(
                 enabled: $request->boolean('folios.enabled'),
@@ -150,7 +154,7 @@ class BookController extends Controller
                 sizePt: $request->float('folios.size_pt'),
                 marginMm: $request->float('folios.margin_mm'),
             ));
-        } catch (InvalidPageSequence $e) {
+        } catch (InvalidPageSequence|InvalidPageDesign $e) {
             throw ValidationException::withMessages(['pages' => $e->getMessage()]);
         }
 
@@ -175,7 +179,12 @@ class BookController extends Controller
             }
 
             $source = filter_var($page['source'] ?? null, FILTER_VALIDATE_INT);
-            $items[] = new PageItem($page['id'], is_int($source) ? $source : null, filter_var($page['folio'] ?? true, FILTER_VALIDATE_BOOLEAN));
+            $items[] = new PageItem(
+                $page['id'],
+                is_int($source) ? $source : null,
+                filter_var($page['folio'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                PageDesign::fromArray($page['design'] ?? null),
+            );
         }
 
         return $items;
@@ -194,18 +203,17 @@ class BookController extends Controller
     }
 
     /**
-     * @return array<string, string|null> familia => archivo en public/fonts/folios
+     * @param  list<string>  $fonts
      */
-    private function folioFonts(): array
+    private function ensureFontsAvailable(PageSequence $sequence, array $fonts): void
     {
-        $fonts = [];
-        foreach (config()->array('noctua.folio_fonts') as $family => $file) {
-            if (is_string($family)) {
-                $fonts[$family] = is_string($file) ? $file : null;
+        foreach ($sequence->items as $index => $item) {
+            foreach ($item->design->textBoxes() as $box) {
+                if (! in_array($box->font, $fonts, true)) {
+                    throw new InvalidPageDesign('La fuente «'.$box->font.'» de la página '.($index + 1).' no está disponible.');
+                }
             }
         }
-
-        return $fonts;
     }
 
     public function destroy(Book $book): RedirectResponse

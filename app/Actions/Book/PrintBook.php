@@ -10,42 +10,67 @@ use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
 use App\Domain\Printing\SheetLayout;
 use App\Domain\Printing\Size;
-use App\Domain\Typesetting\Typst\FolioOverlay;
+use App\Domain\Typesetting\Typst\PageLayers;
+use App\Fonts\FontLibrary;
 use App\Models\Book;
 use App\Models\User;
 
 /**
- * Compone el libro editado (orden, blancos, folios) e impone el resultado.
+ * Compone el libro editado (orden, blancos, fondos, textos, folios) e impone el resultado.
  */
 final readonly class PrintBook
 {
     public function __construct(
         private PdfComposer $composer,
-        private FolioOverlay $folios,
+        private PageLayers $layers,
+        private FontLibrary $fonts,
         private ImposeUploadedPdf $impose,
     ) {}
 
     public function handle(User $user, Book $book, ImpositionSettings $settings, PrinterProfile $printer, PrintOptions $options): StoredImposition
     {
-        $sequence = $book->sequence();
-        $folioSettings = $book->folioSettings();
         $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'noctua-libro-'.bin2hex(random_bytes(6));
-        $overlay = null;
 
         try {
-            if ($sequence->folios($folioSettings) !== []) {
-                // Escala con la que la página llegará al papel, para que el folio salga al tamaño pedido.
-                $scale = (new SheetLayout(Size::letterLandscape(), $book->pageSize(), $printer, $options->pageFit))->scale;
-                $overlay = "{$tmp}-folios.pdf";
-                $this->folios->render($sequence, $folioSettings, $book->pageSize(), $scale, $overlay);
-            }
-
-            $this->composer->compose($book->sourcePath(), $sequence, "{$tmp}.pdf", $overlay);
+            $this->compose($user, $book, $printer, $options, "{$tmp}.pdf");
 
             return $this->impose->handle($user, "{$tmp}.pdf", $settings, $printer, $options, "{$book->title}.pdf");
         } finally {
-            foreach (["{$tmp}.pdf", "{$tmp}-folios.pdf"] as $file) {
-                if (is_file($file)) {
+            if (is_file("{$tmp}.pdf")) {
+                unlink("{$tmp}.pdf");
+            }
+        }
+    }
+
+    /**
+     * PDF de páginas del libro, ya editado, sin imponer.
+     */
+    public function compose(User $user, Book $book, PrinterProfile $printer, PrintOptions $options, string $outputPath): void
+    {
+        $sequence = $book->sequence();
+        $folios = $book->folioSettings();
+        $page = $book->pageSize();
+        $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'noctua-capas-'.bin2hex(random_bytes(6));
+        $under = $this->layers->needsUnder($sequence) ? "{$tmp}-debajo.pdf" : null;
+        $over = $this->layers->needsOver($sequence, $folios) ? "{$tmp}-encima.pdf" : null;
+
+        try {
+            // Escala con la que la página llegará al papel, para que el folio salga al tamaño pedido.
+            $scale = (new SheetLayout(Size::letterLandscape(), $page, $printer, $options->pageFit))->scale;
+            $fontPaths = $this->fonts->typstPaths($user);
+
+            if ($under !== null) {
+                $this->layers->render('debajo', $sequence, $folios, $page, $scale, $fontPaths, $under);
+            }
+
+            if ($over !== null) {
+                $this->layers->render('encima', $sequence, $folios, $page, $scale, $fontPaths, $over);
+            }
+
+            $this->composer->compose($book->sourcePath(), $sequence, $outputPath, $over, $under);
+        } finally {
+            foreach ([$under, $over] as $file) {
+                if ($file !== null && is_file($file)) {
                     unlink($file);
                 }
             }

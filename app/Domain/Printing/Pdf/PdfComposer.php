@@ -2,18 +2,19 @@
 
 namespace App\Domain\Printing\Pdf;
 
+use App\Domain\Book\Design\BackgroundMode;
 use App\Domain\Book\PageSequence;
 use App\Domain\Printing\PageDoesNotFit;
 use App\Domain\Printing\Size;
 
 /**
  * Arma el PDF de páginas del libro a partir del PDF de origen: nuevo orden,
- * páginas quitadas o duplicadas, blancos y, opcionalmente, una capa encima
- * (folios) con una página por página del libro.
+ * páginas quitadas o duplicadas y blancos. Por cada página apila:
+ * capa «debajo» (fondos) → página de origen → tinte → capa «encima».
  */
 final class PdfComposer
 {
-    public function compose(string $sourcePath, PageSequence $sequence, string $outputPath, ?string $overlayPath = null): void
+    public function compose(string $sourcePath, PageSequence $sequence, string $outputPath, ?string $overPath = null, ?string $underPath = null): void
     {
         $page = $this->pageSize($sourcePath);
         $pdf = new DeterministicFpdi($page);
@@ -27,28 +28,28 @@ final class PdfComposer
                 }
             }
 
-            $overlays = [];
-            if ($overlayPath !== null) {
-                $overlayPages = $pdf->setSourceFile($overlayPath);
-
-                if ($overlayPages !== $sequence->count()) {
-                    throw new PageDoesNotFit("La capa de folios tiene {$overlayPages} páginas y el libro {$sequence->count()}.");
-                }
-
-                for ($p = 1; $p <= $overlayPages; $p++) {
-                    $overlays[$p] = $pdf->importPage($p);
-                }
-            }
+            $under = $underPath === null ? [] : $this->importLayer($pdf, $underPath, $sequence);
+            $over = $overPath === null ? [] : $this->importLayer($pdf, $overPath, $sequence);
 
             foreach ($sequence->items as $index => $item) {
                 $pdf->AddPage();
+                $position = $index + 1;
+
+                if (isset($under[$position])) {
+                    $pdf->useTemplate($under[$position], 0, 0, $page->widthMm, $page->heightMm);
+                }
 
                 if ($item->sourcePage !== null) {
                     $pdf->useTemplate($templates[$item->sourcePage], 0, 0, $page->widthMm, $page->heightMm);
                 }
 
-                if (isset($overlays[$index + 1])) {
-                    $pdf->useTemplate($overlays[$index + 1], 0, 0, $page->widthMm, $page->heightMm);
+                $background = $item->design->background;
+                if ($background !== null && $background->mode === BackgroundMode::Tint) {
+                    $pdf->multiplyRect(0, 0, $page->widthMm, $page->heightMm, $background->color->rgb());
+                }
+
+                if (isset($over[$position])) {
+                    $pdf->useTemplate($over[$position], 0, 0, $page->widthMm, $page->heightMm);
                 }
             }
 
@@ -56,6 +57,25 @@ final class PdfComposer
         } finally {
             $pdf->cleanUp();
         }
+    }
+
+    /**
+     * @return array<int, string> posición en el libro => plantilla importada
+     */
+    private function importLayer(DeterministicFpdi $pdf, string $path, PageSequence $sequence): array
+    {
+        $pages = $pdf->setSourceFile($path);
+
+        if ($pages !== $sequence->count()) {
+            throw new PageDoesNotFit("La capa tiene {$pages} páginas y el libro {$sequence->count()}.");
+        }
+
+        $templates = [];
+        for ($p = 1; $p <= $pages; $p++) {
+            $templates[$p] = $pdf->importPage($p);
+        }
+
+        return $templates;
     }
 
     public function pageSize(string $sourcePath): Size

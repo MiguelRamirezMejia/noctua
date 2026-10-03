@@ -1,7 +1,11 @@
 <?php
 
+use App\Actions\Book\PrintBook;
 use App\Domain\Printing\Pdf\TestDocument;
+use App\Domain\Printing\PrinterProfile;
+use App\Domain\Printing\PrintOptions;
 use App\Domain\Printing\Size;
+use App\Fonts\FontLibrary;
 use App\Models\Book;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -13,6 +17,7 @@ use Symfony\Component\Process\ExecutableFinder;
 beforeEach(function () {
     Storage::fake('local');
     $this->user = User::factory()->create();
+    app(FontLibrary::class)->register(base_path('tests/Fixtures/fonts/Nunito-Regular.ttf'), 'Nunito-Regular.ttf', category: 'Sans');
 });
 
 function bookPdf(int $pages = 6, ?Size $size = null): UploadedFile
@@ -92,7 +97,7 @@ it('crea un libro desde un PDF con sus miniaturas y lo abre en el editor', funct
     $this->get(route('books.edit', $book))
         ->assertInertia(fn (Assert $page) => $page
             ->component('books/Edit')
-            ->where('book.pages.0', ['id' => 'p1', 'source' => 1, 'folio' => true])
+            ->where('book.pages.0', ['id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => null, 'elements' => []]])
             ->where('previewScale', fn ($scale) => $scale < 1));
 
     $this->get(route('books.thumbnail', [$book, 1]))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
@@ -183,6 +188,57 @@ it('imprime el libro editado con folios estampados', function () {
     expect(preg_replace('/\s+/', ' ', $front))->toContain('Página 4')->toContain('Página 2')
         ->and(preg_replace('/\s+/', ' ', $back))->toContain('Página 1')->not->toContain('Página 3');
 })->skip(fn () => ! binaryAvailable('pdftoppm') || ! binaryAvailable('typst') || (new ExecutableFinder)->find('pdftotext') === null, 'Requiere Typst y Poppler.');
+
+it('imprime fondos de color y cuadros de texto con fragmentos en negrita', function () {
+    $book = uploadBook($this->user, 4);
+    $black = ['background' => ['color' => '#000000', 'mode' => 'behind'], 'elements' => [[
+        'id' => 't1', 'type' => 'text', 'x' => 10, 'y' => 80, 'width' => 120, 'height' => 40,
+        'font' => 'Nunito', 'size_pt' => 20, 'line_height' => 1.3, 'color' => '#ffffff',
+        'align' => 'center', 'valign' => 'middle', 'fill' => null,
+        'spans' => [
+            ['text' => 'Había una vez un ', 'bold' => false, 'italic' => false, 'color' => null],
+            ['text' => 'dragón', 'bold' => true, 'italic' => false, 'color' => '#e11d48'],
+        ],
+    ]]];
+
+    $this->put(route('books.update', $book), editPayload($book, [
+        ['id' => 'blanco', 'source' => null, 'folio' => true, 'design' => $black],
+        ['id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => ['color' => '#bfdbfe', 'mode' => 'tint'], 'elements' => []]],
+    ]))->assertSessionHasNoErrors();
+
+    $composed = tempnam(sys_get_temp_dir(), 'noctua-compuesto-');
+    app(PrintBook::class)->compose($this->user, $book->refresh(), new PrinterProfile, new PrintOptions, $composed);
+
+    $text = Process::timeout(30)->run(['pdftotext', '-f', '1', '-l', '1', $composed, '-'])->output();
+    $fonts = Process::timeout(30)->run(['pdffonts', $composed])->output();
+    $png = Process::timeout(30)->run(['pdftoppm', '-r', '10', '-png', '-singlefile', $composed, $composed.'-img'])->successful();
+    $image = imagecreatefrompng($composed.'-img.png');
+    $corner = imagecolorat($image, 2, 2);
+
+    // pdftotext deduce los espacios por distancia y falla al cambiar de variante: se comparan las palabras.
+    expect(preg_replace('/\s+/', '', $text))->toContain('Habíaunavezundragón')
+        ->and($fonts)->toContain('Nunito')
+        ->and($png)->toBeTrue()
+        ->and([($corner >> 16) & 0xFF, ($corner >> 8) & 0xFF, $corner & 0xFF])->toBe([0, 0, 0]);
+
+    // Segunda página: el papel blanco del PDF original queda teñido de azul.
+    Process::timeout(30)->run(['pdftoppm', '-r', '10', '-png', '-f', '2', '-l', '2', '-singlefile', $composed, $composed.'-p2']);
+    $tinted = imagecolorat(imagecreatefrompng($composed.'-p2.png'), 2, 2);
+    expect([($tinted >> 16) & 0xFF, ($tinted >> 8) & 0xFF, $tinted & 0xFF])->toBe([0xBF, 0xDB, 0xFE]);
+})->skip(fn () => ! binaryAvailable('pdftoppm') || ! binaryAvailable('typst') || (new ExecutableFinder)->find('pdftotext') === null, 'Requiere Typst y Poppler.');
+
+it('rechaza textos con fuentes no disponibles', function () {
+    $book = Book::factory()->for($this->user)->create();
+
+    $this->actingAs($this->user)
+        ->put(route('books.update', $book), editPayload($book, [[
+            'id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => null, 'elements' => [[
+                'id' => 't', 'type' => 'text', 'x' => 0, 'y' => 0, 'width' => 10, 'height' => 10,
+                'font' => 'Comic Sans', 'spans' => [['text' => 'hola']],
+            ]]],
+        ]]))
+        ->assertSessionHasErrors(['pages' => 'La fuente «Comic Sans» de la página 1 no está disponible.']);
+});
 
 it('elimina el libro y sus archivos', function () {
     $book = Book::factory()->for($this->user)->create();

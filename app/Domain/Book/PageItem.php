@@ -2,6 +2,8 @@
 
 namespace App\Domain\Book;
 
+use App\Domain\Book\Design\PageDesign;
+
 /**
  * Una página del libro: una página del PDF de origen o una página en blanco.
  */
@@ -16,6 +18,8 @@ final readonly class PageItem
         public string $id,
         public ?int $sourcePage,
         public bool $showFolio = true,
+        /** Fondo y elementos que Noctua añade a la página. */
+        public PageDesign $design = new PageDesign,
     ) {}
 
     public function isBlank(): bool

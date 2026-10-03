@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Form, Head, router, setLayoutProps, useForm } from '@inertiajs/vue3';
 import { Printer, RotateCcw, Save, Trash2, Undo2 } from '@lucide/vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, toRaw } from 'vue';
 import BookController from '@/actions/App/Http/Controllers/BookController';
 import PageCard from '@/components/book/PageCard.vue';
 import InputError from '@/components/InputError.vue';
@@ -14,23 +14,25 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { loadFontFaces } from '@/composables/useFontFaces';
 import { Label } from '@/components/ui/label';
 import { destroy, edit, index, update } from '@/routes/books';
 import type {
     BookPage,
     EditableBook,
-    FolioFont,
     FolioPosition,
     FolioSettings,
+    PageDesign,
     Option,
     PageFitOption,
     PrintDefaults,
 } from '@/types/book';
+import type { FontFamilyInfo } from '@/types/fonts';
 
 const props = defineProps<{
     book: EditableBook;
     thumbnailBase: string;
-    fonts: FolioFont[];
+    fonts: FontFamilyInfo[];
     positions: Option<FolioPosition>[];
     pageFits: PageFitOption[];
     printDefaults: PrintDefaults;
@@ -50,24 +52,15 @@ const form = useForm<{
     folios: FolioSettings;
 }>({
     title: props.book.title,
-    pages: props.book.pages.map((p) => ({ ...p })),
+    pages: structuredClone(props.book.pages),
     folios: { ...props.book.folios },
 });
 
 const selectClass =
     'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none';
 
-// --- Fuentes para la vista previa del folio ---
-onMounted(() => {
-    for (const font of props.fonts) {
-        if (font.url === null) {
-            continue;
-        }
-
-        const face = new FontFace(font.family, `url(${font.url})`);
-        void face.load().then((loaded) => document.fonts.add(loaded));
-    }
-});
+// --- Fuentes para la vista previa ---
+onMounted(() => loadFontFaces(props.fonts));
 
 // --- Miniaturas ---
 const thumbnailUrl = (source: number | null): string | null =>
@@ -110,6 +103,8 @@ const folioTexts = computed(() => {
 });
 
 // --- Edición de páginas ---
+const emptyDesign = (): PageDesign => ({ background: null, elements: [] });
+
 const uid = (prefix: string) =>
     `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -126,7 +121,11 @@ function move(index: number, delta: number) {
 
 function duplicate(index: number) {
     const page = form.pages[index];
-    form.pages.splice(index + 1, 0, { ...page, id: uid(`p${page.source}`) });
+    // Copia profunda: el diseño de la copia se edita por separado.
+    form.pages.splice(index + 1, 0, {
+        ...structuredClone(toRaw(page)),
+        id: uid(`p${page.source}`),
+    });
 }
 
 function insertBlank(index: number) {
@@ -134,6 +133,7 @@ function insertBlank(index: number) {
         id: uid('b'),
         source: null,
         folio: true,
+        design: emptyDesign(),
     });
 }
 
@@ -161,7 +161,12 @@ function restore(source: number) {
     const before = form.pages.findIndex(
         (p) => p.source !== null && p.source > source,
     );
-    const page = { id: uid(`p${source}`), source, folio: true };
+    const page = {
+        id: uid(`p${source}`),
+        source,
+        folio: true,
+        design: emptyDesign(),
+    };
 
     if (before === -1) {
         form.pages.push(page);
@@ -173,7 +178,12 @@ function restore(source: number) {
 function resetToSource() {
     form.pages = Array.from(
         { length: props.book.source_page_count },
-        (_, i) => ({ id: `p${i + 1}`, source: i + 1, folio: true }),
+        (_, i) => ({
+            id: `p${i + 1}`,
+            source: i + 1,
+            folio: true,
+            design: emptyDesign(),
+        }),
     );
 }
 
@@ -402,7 +412,7 @@ const offsetFields = [
                                         class="bg-background"
                                         :style="{ fontFamily: `'${f.family}'` }"
                                     >
-                                        {{ f.family }} — 1 2 3 4 5
+                                        {{ f.label }} — 1 2 3 4 5
                                     </option>
                                 </select>
                             </div>

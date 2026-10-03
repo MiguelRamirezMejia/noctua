@@ -5,6 +5,58 @@ export type BookPage = {
     /** Página del PDF de origen, o null si es un blanco. */
     source: number | null;
     folio: boolean;
+    design: PageDesign;
+};
+
+export type TextSpan = {
+    text: string;
+    bold: boolean;
+    italic: boolean;
+    /** null = color del cuadro. */
+    color: string | null;
+};
+
+export type TextAlign = 'left' | 'center' | 'right' | 'justify';
+
+export type VerticalAlign = 'top' | 'middle' | 'bottom';
+
+type ElementBox = {
+    id: string;
+    /** mm desde la esquina superior izquierda de la página de origen. */
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
+
+export type TextElement = ElementBox & {
+    type: 'text';
+    font: string;
+    size_pt: number;
+    line_height: number;
+    color: string;
+    align: TextAlign;
+    valign: VerticalAlign;
+    fill: string | null;
+    spans: TextSpan[];
+};
+
+export type RectElement = ElementBox & {
+    type: 'rect';
+    fill: string;
+    opacity: number;
+};
+
+export type PageElement = TextElement | RectElement;
+
+export type PageBackground = {
+    color: string;
+    mode: 'behind' | 'tint';
+};
+
+export type PageDesign = {
+    background: PageBackground | null;
+    elements: PageElement[];
 };
 
 export type FolioPosition = 'bottom-center' | 'bottom-outer' | 'top-outer';
@@ -39,8 +91,6 @@ export type BookSummary = {
     cover_url: string;
     updated_at: string | null;
 };
-
-export type FolioFont = { family: string; url: string | null };
 
 export type Option<T extends string> = { value: T; label: string };
 

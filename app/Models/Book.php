@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Book\Design\PageDesign;
 use App\Domain\Book\FolioPosition;
 use App\Domain\Book\FolioSettings;
 use App\Domain\Book\PageItem;
@@ -86,7 +87,7 @@ class Book extends Model
             }
 
             $source = $page['source'] ?? null;
-            $items[] = new PageItem($page['id'], is_int($source) ? $source : null, ($page['folio'] ?? true) !== false);
+            $items[] = new PageItem($page['id'], is_int($source) ? $source : null, ($page['folio'] ?? true) !== false, PageDesign::fromArray($page['design'] ?? null));
         }
 
         return new PageSequence($this->source_page_count, $items);
@@ -98,6 +99,7 @@ class Book extends Model
             'id' => $item->id,
             'source' => $item->sourcePage,
             'folio' => $item->showFolio,
+            'design' => $item->design->isEmpty() ? null : $item->design->toArray(),
         ], $sequence->items);
     }
 

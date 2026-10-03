@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\FontController;
 use App\Http\Controllers\ImpositionController;
 use App\Http\Controllers\PrintingToolsController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('libros/{book}', [BookController::class, 'destroy'])->name('books.destroy');
     Route::get('libros/{book}/miniaturas/{page}', [BookController::class, 'thumbnail'])->whereNumber('page')->name('books.thumbnail');
     Route::post('libros/{book}/imprimir', [BookController::class, 'print'])->name('books.print');
+
+    Route::get('fuentes', [FontController::class, 'index'])->name('fonts.index');
+    Route::post('fuentes', [FontController::class, 'store'])->name('fonts.store');
+    Route::delete('fuentes/{font}', [FontController::class, 'destroy'])->name('fonts.destroy');
+    Route::get('fuentes/{font}/archivo', [FontController::class, 'file'])->name('fonts.file');
 
     Route::get('imposicion', [ImpositionController::class, 'create'])->name('imposition.create');
     Route::post('imposicion', [ImpositionController::class, 'store'])->name('imposition.store');

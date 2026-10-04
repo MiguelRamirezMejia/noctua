@@ -34,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(TextlessPage::class, fn (): TextlessPage => new TextlessPage(
             config()->string('noctua.binaries.ghostscript'),
+            config()->string('noctua.binaries.pdftotext'),
+            config()->string('noctua.binaries.pdftoppm'),
             config()->integer('noctua.process_timeout'),
         ));
 

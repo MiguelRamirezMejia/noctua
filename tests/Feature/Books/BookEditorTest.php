@@ -292,6 +292,70 @@ it('convierte el texto original de una página en cuadros editables', function (
     $this->actingAs(User::factory()->create())->postJson(route('books.editable-text', [$book, 1]))->assertForbidden();
 })->skip(fn () => ! binaryAvailable('ghostscript') || ! binaryAvailable('pdftotext') || ! binaryAvailable('pdftohtml'), 'Requiere Ghostscript y Poppler.');
 
+/**
+ * PDF como los de un escáner con OCR: la página es una imagen con el texto
+ * dibujado (aquí, barras negras) y encima va el texto en una capa invisible.
+ * Lleva además una «ilustración» sin texto que debe quedar intacta.
+ */
+function scannedPdf(): UploadedFile
+{
+    $dpi = 100;
+    $px = fn (float $mm): int => (int) round($mm / 25.4 * $dpi);
+
+    $scan = imagecreatetruecolor($px(148), $px(210));
+    imagefill($scan, 0, 0, 0xFFFFFF);
+    imagefilledrectangle($scan, $px(22), $px(30), $px(70), $px(34), 0x000000);
+    imagefilledrectangle($scan, $px(40), $px(100), $px(80), $px(140), 0x000000);
+    $png = tempnam(sys_get_temp_dir(), 'noctua-scan-').'.png';
+    imagepng($scan, $png);
+
+    $pdf = new class('P', 'mm', [148, 210]) extends FPDF
+    {
+        public function invisibleText(float $x, float $y, string $text): void
+        {
+            $this->_out('3 Tr');
+            $this->Text($x, $y, $text);
+            $this->_out('0 Tr');
+        }
+    };
+    $pdf->AddPage();
+    $pdf->Image($png, 0, 0, 148, 210);
+    $pdf->SetFont('Helvetica', '', 16);
+    $pdf->invisibleText(20, 35, 'HOLA MUNDO ESCANEADO');
+
+    $path = tempnam(sys_get_temp_dir(), 'noctua-book-');
+    $pdf->Output('F', $path);
+    unlink($png);
+
+    return new UploadedFile($path, 'Escaneado.pdf', 'application/pdf', test: true);
+}
+
+it('borra de la imagen el texto de una página escaneada', function () {
+    $this->actingAs($this->user)->post(route('books.store'), ['pdf' => scannedPdf()])->assertSessionHasNoErrors();
+    $book = Book::query()->latest('id')->firstOrFail();
+
+    $response = $this->postJson(route('books.editable-text', [$book, 1]))->assertOk();
+    expect(implode('', array_column($response->json('elements.0.spans'), 'text')))->toBe('HOLA MUNDO ESCANEADO')
+        // El estilo sale de la capa invisible del OCR.
+        ->and($response->json('substitutions.0.original'))->toBe('Helvetica');
+
+    $prefix = tempnam(sys_get_temp_dir(), 'noctua-textless-');
+    Process::timeout(30)->run([config()->string('noctua.binaries.pdftoppm'), '-r', '50', '-gray', '-png', '-singlefile', $book->textlessPagePath(1), $prefix])->throw();
+    $image = imagecreatefrompng("{$prefix}.png");
+    $gray = function (float $xMm, float $yMm) use ($image): int {
+        $pixel = imagecolorsforindex($image, imagecolorat($image, (int) round($xMm / 25.4 * 50), (int) round($yMm / 25.4 * 50)));
+
+        return $pixel['red'];
+    };
+
+    expect($gray(30, 32))->toBeGreaterThan(240)
+        ->and($gray(60, 32))->toBeGreaterThan(240)
+        // La ilustración no se toca.
+        ->and($gray(60, 120))->toBeLessThan(20);
+
+    unlink("{$prefix}.png");
+})->skip(fn () => ! binaryAvailable('ghostscript') || ! binaryAvailable('pdftotext') || ! binaryAvailable('pdftohtml') || ! binaryAvailable('pdftoppm'), 'Requiere Ghostscript y Poppler.');
+
 it('imprime la página sin su texto original y con el texto editado', function () {
     $book = uploadBook($this->user, 2);
     $elements = $this->postJson(route('books.editable-text', [$book, 1]))->json('elements');

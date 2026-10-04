@@ -81,7 +81,8 @@ final readonly class ExtractPageText
     {
         $dom = new DOMDocument;
         // El XML de pdftohtml declara un DTD externo que no hace falta cargar.
-        if (! @$dom->loadXML($this->run([$this->pdftohtml, '-xml', '-zoom', '1', '-i', '-q', '-stdout', '-f', (string) $page, '-l', (string) $page, $pdf]), LIBXML_NONET)) {
+        // -hidden incluye el texto invisible: la capa de OCR de los escaneos.
+        if (! @$dom->loadXML($this->run([$this->pdftohtml, '-xml', '-hidden', '-zoom', '1', '-i', '-q', '-stdout', '-f', (string) $page, '-l', (string) $page, $pdf]), LIBXML_NONET)) {
             return [];
         }
 

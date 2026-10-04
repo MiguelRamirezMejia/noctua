@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookPreviewController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FontController;
 use App\Http\Controllers\ImpositionController;
 use App\Http\Controllers\PrintingToolsController;
@@ -11,7 +12,7 @@ use Inertia\Inertia;
 Route::get('/', fn () => Inertia::render('Welcome'))->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', fn () => Inertia::render('Dashboard'))->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('libros', [BookController::class, 'index'])->name('books.index');
     Route::post('libros', [BookController::class, 'store'])->name('books.store');

@@ -1,11 +1,11 @@
 <?php
 
 use App\Http\Controllers\PublisherController;
+use App\Http\Controllers\Settings\AppearanceController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', '/settings/profile');
@@ -33,7 +33,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('espacios', [PublisherController::class, 'store'])->name('workspaces.store');
     Route::put('espacio-actual', [PublisherController::class, 'switch'])->name('workspaces.switch');
 
-    Route::get('settings/appearance', fn () => Inertia::render('settings/Appearance'))->name('appearance.edit');
+    Route::get('settings/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');
+    Route::patch('settings/appearance', [AppearanceController::class, 'update'])->name('appearance.update');
 });
 
 Route::get('.well-known/passkey-endpoints', function () {

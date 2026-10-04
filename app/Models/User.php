@@ -29,6 +29,8 @@ use LogicException;
  * @property Carbon|null $two_factor_confirmed_at
  * @property string|null $remember_token
  * @property int|null $current_publisher_id
+ * @property string $appearance light | dark | system
+ * @property string|null $accent_color #rrggbb
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */

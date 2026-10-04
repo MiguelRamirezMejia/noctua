@@ -45,6 +45,7 @@ class HandleInertiaRequests extends Middleware
                 'publisher' => fn (): ?array => $this->currentPublisher($request),
                 'publishers' => fn (): array => $this->publishers($request),
             ],
+            'appearance' => fn (): array => $this->appearance($request),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
@@ -88,5 +89,17 @@ class HandleInertiaRequests extends Middleware
             ->get()
             ->map(fn (Publisher $p): array => ['id' => $p->id, 'name' => $p->name, 'personal' => $p->personal])
             ->all());
+    }
+
+    /**
+     * @return array{mode: string, accent: string|null}
+     */
+    private function appearance(Request $request): array
+    {
+        $user = $request->user();
+
+        return $user instanceof User
+            ? ['mode' => $user->appearance, 'accent' => $user->accent_color]
+            : ['mode' => 'system', 'accent' => null];
     }
 }

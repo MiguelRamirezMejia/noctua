@@ -123,12 +123,9 @@ Hecho:
 - Libros desde PDF: organización de páginas, numeración, editor de pliego, texto editable.
 - Catálogo y subida de fuentes.
 - Espacios personales y editoriales.
-
-En curso:
-
-- Ajustes generales del libro (márgenes y cambios para todas las páginas).
-- Apariencia personalizable (modo claro/oscuro y color de acento).
-- Interfaz completamente en español y más amigable.
+- Márgenes del libro en espejo y cambios para todas las páginas (fondo, tipo de letra).
+- Apariencia por cuenta: modo claro, oscuro o del sistema y color de acento.
+- Interfaz completa en español, con identidad propia, portada e inicio con primeros pasos.
 
 Más adelante:
 

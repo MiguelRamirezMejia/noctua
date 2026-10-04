@@ -2,6 +2,7 @@
 
 namespace App\Domain\Printing\Pdf;
 
+use App\Domain\Book\ContentFrame;
 use App\Domain\Book\Design\BackgroundMode;
 use App\Domain\Book\PageSequence;
 use App\Domain\Printing\PageDoesNotFit;
@@ -17,8 +18,9 @@ final class PdfComposer
     /**
      * @param  list<int>|null  $only  Posiciones del libro a incluir (p. ej. un pliego para la vista previa).
      * @param  array<int, string>  $textless  Página de origen => PDF de esa página sin su texto.
+     * @param  array<int, ContentFrame>  $frames  Posición => dónde va la página original (márgenes del libro).
      */
-    public function compose(string $sourcePath, PageSequence $sequence, string $outputPath, ?string $overPath = null, ?string $underPath = null, ?array $only = null, array $textless = []): void
+    public function compose(string $sourcePath, PageSequence $sequence, string $outputPath, ?string $overPath = null, ?string $underPath = null, ?array $only = null, array $textless = [], array $frames = []): void
     {
         $page = $this->pageSize($sourcePath);
         $pdf = new DeterministicFpdi($page);
@@ -62,7 +64,8 @@ final class PdfComposer
                     $template = $item->design->hideSourceText && isset($withoutText[$item->sourcePage])
                         ? $withoutText[$item->sourcePage]
                         : $templates[$item->sourcePage];
-                    $pdf->useTemplate($template, 0, 0, $page->widthMm, $page->heightMm);
+                    $frame = $frames[$position] ?? new ContentFrame(1.0, 0.0, 0.0);
+                    $pdf->useTemplate($template, $frame->xMm, $frame->yMm, $page->widthMm * $frame->scale, $page->heightMm * $frame->scale);
                 }
 
                 $background = $item->design->background;

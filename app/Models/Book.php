@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Book\BookLayout;
 use App\Domain\Book\Design\PageDesign;
 use App\Domain\Book\FolioPosition;
 use App\Domain\Book\FolioSettings;
@@ -30,6 +31,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string $source_height_mm
  * @property array<mixed> $pages
  * @property array<mixed> $folios
+ * @property array<mixed>|null $layout
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -38,7 +40,7 @@ class Book extends Model
     /** @use HasFactory<BookFactory> */
     use HasFactory;
 
-    protected $fillable = ['title', 'source_filename', 'source_page_count', 'source_width_mm', 'source_height_mm', 'pages', 'folios'];
+    protected $fillable = ['title', 'source_filename', 'source_page_count', 'source_width_mm', 'source_height_mm', 'pages', 'folios', 'layout'];
 
     /**
      * @return array<string, string>
@@ -48,6 +50,7 @@ class Book extends Model
         return [
             'pages' => 'array',
             'folios' => 'array',
+            'layout' => 'array',
             'source_page_count' => 'integer',
         ];
     }
@@ -138,6 +141,16 @@ class Book extends Model
             sizePt: $float('size_pt', 9.0),
             marginMm: $float('margin_mm', 8.0),
         );
+    }
+
+    public function bookLayout(): BookLayout
+    {
+        return BookLayout::fromArray($this->layout);
+    }
+
+    public function setBookLayout(BookLayout $layout): void
+    {
+        $this->layout = $layout->toArray();
     }
 
     public function setFolioSettings(FolioSettings $settings): void

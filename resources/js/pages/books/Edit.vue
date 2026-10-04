@@ -22,6 +22,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { contentFrame } from '@/lib/layout';
 import { cloneData } from '@/lib/richText';
 import { loadFontFaces } from '@/composables/useFontFaces';
 import { Label } from '@/components/ui/label';
@@ -35,6 +36,7 @@ import {
     update,
 } from '@/routes/books';
 import type {
+    BookLayout,
     BookPage,
     EditableBook,
     FolioPosition,
@@ -67,10 +69,12 @@ const form = useForm<{
     title: string;
     pages: BookPage[];
     folios: FolioSettings;
+    layout: BookLayout;
 }>({
     title: props.book.title,
     pages: cloneData(props.book.pages),
     folios: { ...props.book.folios },
+    layout: { ...props.book.layout },
 });
 
 const selectClass =
@@ -231,6 +235,30 @@ function dropOn(index: number) {
 }
 
 // --- Guardar ---
+// --- Márgenes del libro ---
+const marginFields = [
+    { key: 'margin_top_mm', label: 'Superior' },
+    { key: 'margin_bottom_mm', label: 'Inferior' },
+    { key: 'margin_inside_mm', label: 'Interior (lomo)' },
+    { key: 'margin_outside_mm', label: 'Exterior' },
+] as const;
+
+const marginPresets = [
+    { label: 'Sin márgenes', mm: 0 },
+    { label: 'Estrechos', mm: 8 },
+    { label: 'Normales', mm: 15 },
+    { label: 'Amplios', mm: 22 },
+] as const;
+
+const isPreset = (mm: number) =>
+    marginFields.every((f) => form.layout[f.key] === mm);
+
+function applyPreset(mm: number) {
+    for (const field of marginFields) {
+        form.layout[field.key] = mm;
+    }
+}
+
 // --- Editor de pliego ---
 const openSpread = ref<number | null>(null);
 const pageImageBase = pageImage({ book: props.book.id, page: 0 }).url;
@@ -347,6 +375,15 @@ const offsetFields = [
                                 :width-mm="book.width_mm"
                                 :height-mm="book.height_mm"
                                 :print-scale="previewScale"
+                                :frame="
+                                    contentFrame(
+                                        form.layout,
+                                        book.width_mm,
+                                        book.height_mm,
+                                        previewScale,
+                                        i + 1,
+                                    )
+                                "
                                 :dragging="dragIndex === i"
                                 @move="(d) => move(i, d)"
                                 @duplicate="duplicate(i)"
@@ -372,6 +409,60 @@ const offsetFields = [
             </section>
 
             <aside class="flex flex-col gap-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Márgenes del libro</CardTitle>
+                        <CardDescription>
+                            El contenido de cada página se reduce y se centra
+                            dentro de estos márgenes, tal como quedan impresos.
+                            Son en espejo: el interior va siempre del lado del
+                            lomo.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent class="grid gap-4">
+                        <div class="flex flex-wrap gap-2">
+                            <Button
+                                v-for="preset in marginPresets"
+                                :key="preset.label"
+                                size="sm"
+                                :variant="
+                                    isPreset(preset.mm) ? 'default' : 'outline'
+                                "
+                                @click="applyPreset(preset.mm)"
+                            >
+                                {{ preset.label }}
+                            </Button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div
+                                v-for="field in marginFields"
+                                :key="field.key"
+                                class="grid gap-2"
+                            >
+                                <Label :for="field.key"
+                                    >{{ field.label }} (mm)</Label
+                                >
+                                <Input
+                                    :id="field.key"
+                                    v-model.number="form.layout[field.key]"
+                                    type="number"
+                                    min="0"
+                                    max="60"
+                                    step="0.5"
+                                />
+                            </div>
+                        </div>
+                        <InputError
+                            :message="
+                                form.errors['layout.margin_top_mm'] ??
+                                form.errors['layout.margin_bottom_mm'] ??
+                                form.errors['layout.margin_inside_mm'] ??
+                                form.errors['layout.margin_outside_mm']
+                            "
+                        />
+                    </CardContent>
+                </Card>
+
                 <Card>
                     <CardHeader>
                         <CardTitle>Numeración de páginas</CardTitle>
@@ -734,6 +825,7 @@ const offsetFields = [
         :folio-texts="folioTexts"
         :fonts="fonts"
         :print-scale="previewScale"
+        :layout="form.layout"
         :page-image-base="pageImageBase"
         :editable-text-base="editableTextBase"
         :preview-url="previewUrl"

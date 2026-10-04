@@ -4,6 +4,7 @@ namespace App\Actions\Book;
 
 use App\Actions\Imposition\ImposeUploadedPdf;
 use App\Actions\Imposition\StoredImposition;
+use App\Domain\Book\BookLayout;
 use App\Domain\Book\FolioSettings;
 use App\Domain\Book\PageSequence;
 use App\Domain\Imposition\ImpositionSettings;
@@ -52,10 +53,11 @@ final readonly class PrintBook
      * @param  PageSequence|null  $sequence  Páginas a componer; por defecto, las guardadas.
      * @param  list<int>|null  $only  Posiciones a incluir (vista previa de un pliego).
      */
-    public function compose(User $user, Book $book, PrinterProfile $printer, PrintOptions $options, string $outputPath, ?PageSequence $sequence = null, ?FolioSettings $folios = null, ?array $only = null): void
+    public function compose(User $user, Book $book, PrinterProfile $printer, PrintOptions $options, string $outputPath, ?PageSequence $sequence = null, ?FolioSettings $folios = null, ?array $only = null, ?BookLayout $layout = null): void
     {
         $sequence ??= $book->sequence();
         $folios ??= $book->folioSettings();
+        $layout ??= $book->bookLayout();
         $page = $book->pageSize();
         $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'noctua-capas-'.bin2hex(random_bytes(6));
         $under = $this->layers->needsUnder($sequence) ? "{$tmp}-debajo.pdf" : null;
@@ -65,13 +67,17 @@ final readonly class PrintBook
             // Escala con la que la página llegará al papel, para que el folio salga al tamaño pedido.
             $scale = (new SheetLayout(Size::letterLandscape(), $page, $printer, $options->pageFit))->scale;
             $fontPaths = $this->fonts->typstPaths($book->publisher);
+            $frames = [];
+            foreach (array_keys($sequence->items) as $index) {
+                $frames[$index + 1] = $layout->frame($page, $scale, $index + 1);
+            }
 
             if ($under !== null) {
-                $this->layers->render('debajo', $sequence, $folios, $page, $scale, $fontPaths, $under);
+                $this->layers->render('debajo', $sequence, $folios, $page, $scale, $fontPaths, $under, $frames);
             }
 
             if ($over !== null) {
-                $this->layers->render('encima', $sequence, $folios, $page, $scale, $fontPaths, $over);
+                $this->layers->render('encima', $sequence, $folios, $page, $scale, $fontPaths, $over, $frames);
             }
 
             $textless = [];
@@ -81,7 +87,7 @@ final readonly class PrintBook
                 }
             }
 
-            $this->composer->compose($book->sourcePath(), $sequence, $outputPath, $over, $under, $only, $textless);
+            $this->composer->compose($book->sourcePath(), $sequence, $outputPath, $over, $under, $only, $textless, $frames);
         } finally {
             foreach ([$under, $over] as $file) {
                 if ($file !== null && is_file($file)) {

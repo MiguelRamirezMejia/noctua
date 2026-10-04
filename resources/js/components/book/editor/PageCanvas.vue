@@ -2,6 +2,7 @@
 import type { Editor } from '@tiptap/vue-3';
 import { computed, ref } from 'vue';
 import RichTextEditor from '@/components/book/editor/RichTextEditor.vue';
+import type { ContentFrame } from '@/lib/layout';
 import { ptToPx } from '@/lib/richText';
 import type {
     BookPage,
@@ -22,6 +23,8 @@ const props = defineProps<{
     folioText: string | null;
     folios: FolioSettings;
     printScale: number;
+    /** Dónde va el contenido según los márgenes del libro. */
+    frame: ContentFrame;
     selectedId: string | null;
     editingId: string | null;
     active: boolean;
@@ -39,6 +42,14 @@ const MIN_SIZE_MM = 3;
 const px = (mm: number) => `${mm * props.scale}px`;
 
 const background = computed(() => props.page.design.background);
+
+const frameStyle = computed(() => ({
+    left: px(props.frame.x),
+    top: px(props.frame.y),
+    width: px(props.widthMm),
+    height: px(props.heightMm),
+    transform: `scale(${props.frame.scale})`,
+}));
 
 // --- Arrastrar y cambiar tamaño ---
 type Handle = 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w';
@@ -80,8 +91,9 @@ function onDrag(event: PointerEvent) {
         return;
     }
 
-    const dx = (event.clientX - d.startX) / props.scale;
-    const dy = (event.clientY - d.startY) / props.scale;
+    // El contenido está escalado por los márgenes: el movimiento en pantalla se divide también por esa escala.
+    const dx = (event.clientX - d.startX) / (props.scale * props.frame.scale);
+    const dy = (event.clientY - d.startY) / (props.scale * props.frame.scale);
     const round = (n: number) => Math.round(n * 10) / 10;
     const el = d.element;
     const b = d.box;
@@ -210,13 +222,18 @@ function updateSpans(el: TextElement, spans: TextSpan[]) {
             class="pointer-events-none absolute inset-0"
             :style="{ backgroundColor: background.color }"
         />
-        <img
+        <div
             v-if="imageUrl"
-            :src="imageUrl"
-            alt=""
-            class="pointer-events-none absolute inset-0 size-full select-none"
-            draggable="false"
-        />
+            class="pointer-events-none absolute origin-top-left"
+            :style="frameStyle"
+        >
+            <img
+                :src="imageUrl"
+                alt=""
+                class="size-full select-none"
+                draggable="false"
+            />
+        </div>
         <!-- Tinte: misma fusión «multiplicar» que al imprimir. -->
         <div
             v-if="background?.mode === 'tint'"
@@ -224,61 +241,67 @@ function updateSpans(el: TextElement, spans: TextSpan[]) {
             :style="{ backgroundColor: background.color }"
         />
 
+        <!-- Los elementos acompañan al contenido dentro de los márgenes del libro. -->
         <div
-            v-for="el in page.design.elements"
-            :key="el.id"
-            class="absolute"
-            :class="[
-                selectedId === el.id
-                    ? 'outline-2 outline-primary'
-                    : 'hover:outline-1 hover:outline-primary/50',
-                editingId === el.id ? '' : 'cursor-move',
-            ]"
-            :style="{
-                left: px(el.x),
-                top: px(el.y),
-                width: px(el.width),
-                height: px(el.height),
-            }"
-            @pointerdown="startDrag($event, el, 'move')"
-            @dblclick.stop="el.type === 'text' && emit('edit', el.id)"
+            class="pointer-events-none absolute origin-top-left"
+            :style="frameStyle"
         >
             <div
-                v-if="el.type === 'rect'"
-                class="size-full"
-                :style="{ backgroundColor: el.fill, opacity: el.opacity }"
-            />
-            <div
-                v-else
-                class="flex size-full flex-col whitespace-pre-wrap"
-                :style="textBoxStyle(el)"
+                v-for="el in page.design.elements"
+                :key="el.id"
+                class="pointer-events-auto absolute"
+                :class="[
+                    selectedId === el.id
+                        ? 'outline-2 outline-primary'
+                        : 'hover:outline-1 hover:outline-primary/50',
+                    editingId === el.id ? '' : 'cursor-move',
+                ]"
+                :style="{
+                    left: px(el.x),
+                    top: px(el.y),
+                    width: px(el.width),
+                    height: px(el.height),
+                }"
+                @pointerdown="startDrag($event, el, 'move')"
+                @dblclick.stop="el.type === 'text' && emit('edit', el.id)"
             >
-                <RichTextEditor
-                    v-if="editingId === el.id"
-                    :spans="el.spans"
-                    @change="(s) => updateSpans(el, s)"
-                    @ready="(e) => emit('editorReady', e)"
-                    @done="emit('stopEditing')"
+                <div
+                    v-if="el.type === 'rect'"
+                    class="size-full"
+                    :style="{ backgroundColor: el.fill, opacity: el.opacity }"
                 />
-                <div v-else>
-                    <span
-                        v-for="(span, i) in el.spans"
-                        :key="i"
-                        :style="spanStyle(span)"
-                        >{{ span.text }}</span
-                    >
+                <div
+                    v-else
+                    class="flex size-full flex-col whitespace-pre-wrap"
+                    :style="textBoxStyle(el)"
+                >
+                    <RichTextEditor
+                        v-if="editingId === el.id"
+                        :spans="el.spans"
+                        @change="(s) => updateSpans(el, s)"
+                        @ready="(e) => emit('editorReady', e)"
+                        @done="emit('stopEditing')"
+                    />
+                    <div v-else>
+                        <span
+                            v-for="(span, i) in el.spans"
+                            :key="i"
+                            :style="spanStyle(span)"
+                            >{{ span.text }}</span
+                        >
+                    </div>
                 </div>
-            </div>
 
-            <template v-if="selectedId === el.id && editingId !== el.id">
-                <span
-                    v-for="h in handles"
-                    :key="h.name"
-                    class="absolute size-3 rounded-sm border border-primary bg-background"
-                    :class="h.class"
-                    @pointerdown="startDrag($event, el, h.name)"
-                />
-            </template>
+                <template v-if="selectedId === el.id && editingId !== el.id">
+                    <span
+                        v-for="h in handles"
+                        :key="h.name"
+                        class="absolute size-3 rounded-sm border border-primary bg-background"
+                        :class="h.class"
+                        @pointerdown="startDrag($event, el, h.name)"
+                    />
+                </template>
+            </div>
         </div>
 
         <span

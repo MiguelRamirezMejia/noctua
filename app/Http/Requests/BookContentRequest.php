@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Domain\Book\BookLayout;
 use App\Domain\Book\Design\InvalidPageDesign;
 use App\Domain\Book\Design\PageDesign;
 use App\Domain\Book\FolioPosition;
@@ -46,6 +47,10 @@ class BookContentRequest extends FormRequest
             'folios.font' => ['required', Rule::in($this->fonts())],
             'folios.size_pt' => ['required', 'numeric', 'between:4,48'],
             'folios.margin_mm' => ['required', 'numeric', 'between:0,60'],
+            'layout.margin_top_mm' => ['sometimes', 'numeric', 'between:0,'.BookLayout::MAX_MARGIN_MM],
+            'layout.margin_bottom_mm' => ['sometimes', 'numeric', 'between:0,'.BookLayout::MAX_MARGIN_MM],
+            'layout.margin_inside_mm' => ['sometimes', 'numeric', 'between:0,'.BookLayout::MAX_MARGIN_MM],
+            'layout.margin_outside_mm' => ['sometimes', 'numeric', 'between:0,'.BookLayout::MAX_MARGIN_MM],
         ];
     }
 
@@ -77,6 +82,11 @@ class BookContentRequest extends FormRequest
         }
 
         return $sequence;
+    }
+
+    public function bookLayout(): BookLayout
+    {
+        return BookLayout::fromArray($this->input('layout'));
     }
 
     public function folioSettings(): FolioSettings

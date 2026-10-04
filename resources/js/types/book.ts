@@ -73,6 +73,14 @@ export type FolioSettings = {
     margin_mm: number;
 };
 
+/** Márgenes en espejo, en mm tal como quedan impresos. */
+export type BookLayout = {
+    margin_top_mm: number;
+    margin_bottom_mm: number;
+    margin_inside_mm: number;
+    margin_outside_mm: number;
+};
+
 export type EditableBook = {
     id: number;
     title: string;
@@ -82,6 +90,7 @@ export type EditableBook = {
     height_mm: number;
     pages: BookPage[];
     folios: FolioSettings;
+    layout: BookLayout;
 };
 
 export type BookSummary = {

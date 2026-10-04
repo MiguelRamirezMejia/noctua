@@ -8,6 +8,7 @@ import {
     Trash2,
 } from '@lucide/vue';
 import { computed } from 'vue';
+import type { ContentFrame } from '@/lib/layout';
 import type { BookPage, FolioSettings, PageElement } from '@/types/book';
 
 const props = defineProps<{
@@ -22,6 +23,8 @@ const props = defineProps<{
     heightMm: number;
     /** Escala con la que se imprimirá (para previsualizar el folio a su tamaño real). */
     printScale: number;
+    /** Dónde va el contenido según los márgenes del libro. */
+    frame: ContentFrame;
     dragging: boolean;
 }>();
 
@@ -70,6 +73,10 @@ const folioStyle = computed(() => {
 });
 
 const background = computed(() => props.page.design.background);
+
+const frameStyle = computed(() => ({
+    transform: `translate(${(props.frame.x / props.widthMm) * 100}%, ${(props.frame.y / props.heightMm) * 100}%) scale(${props.frame.scale})`,
+}));
 
 /** Elementos del diseño en proporción a la miniatura (porcentajes y unidades de contenedor). */
 function elementStyle(el: PageElement): Record<string, string> {
@@ -137,13 +144,18 @@ const label = computed(() =>
                 class="absolute inset-0"
                 :style="{ backgroundColor: background.color }"
             />
-            <img
+            <div
                 v-if="thumbnailUrl"
-                :src="thumbnailUrl"
-                alt=""
-                class="pointer-events-none relative size-full object-fill select-none"
-                loading="lazy"
-            />
+                class="pointer-events-none absolute inset-0 origin-top-left"
+                :style="frameStyle"
+            >
+                <img
+                    :src="thumbnailUrl"
+                    alt=""
+                    class="size-full object-fill select-none"
+                    loading="lazy"
+                />
+            </div>
             <div
                 v-else-if="!background"
                 class="flex size-full items-center justify-center bg-[repeating-linear-gradient(135deg,transparent,transparent_6px,var(--color-muted)_6px,var(--color-muted)_7px)] text-xs text-muted-foreground uppercase"
@@ -156,21 +168,26 @@ const label = computed(() =>
                 :style="{ backgroundColor: background.color }"
             />
             <div
-                v-for="el in page.design.elements"
-                :key="el.id"
-                class="pointer-events-none absolute overflow-visible"
-                :style="elementStyle(el)"
+                class="pointer-events-none absolute inset-0 origin-top-left"
+                :style="frameStyle"
             >
-                <span
-                    v-for="(span, i) in el.type === 'text' ? el.spans : []"
-                    :key="i"
-                    :style="{
-                        fontWeight: span.bold ? '700' : '400',
-                        fontStyle: span.italic ? 'italic' : 'normal',
-                        ...(span.color ? { color: span.color } : {}),
-                    }"
-                    >{{ span.text }}</span
+                <div
+                    v-for="el in page.design.elements"
+                    :key="el.id"
+                    class="pointer-events-none absolute overflow-visible"
+                    :style="elementStyle(el)"
                 >
+                    <span
+                        v-for="(span, i) in el.type === 'text' ? el.spans : []"
+                        :key="i"
+                        :style="{
+                            fontWeight: span.bold ? '700' : '400',
+                            fontStyle: span.italic ? 'italic' : 'normal',
+                            ...(span.color ? { color: span.color } : {}),
+                        }"
+                        >{{ span.text }}</span
+                    >
+                </div>
             </div>
             <span
                 v-if="folioText"

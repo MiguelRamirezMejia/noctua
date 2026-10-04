@@ -315,6 +315,40 @@ it('imprime la página sin su texto original y con el texto editado', function (
         ->and($page2)->toContain('CABEZA');
 })->skip(fn () => ! binaryAvailable('ghostscript') || ! binaryAvailable('typst') || (new ExecutableFinder)->find('pdftotext') === null, 'Requiere Ghostscript, Typst y Poppler.');
 
+it('aplica los márgenes del libro al contenido de cada página', function () {
+    $book = uploadBook($this->user, 2);
+
+    // Posición vertical de la palabra «CABEZA» en la primera página compuesta.
+    $headTop = function () use ($book): float {
+        $composed = tempnam(sys_get_temp_dir(), 'noctua-margenes-');
+        app(PrintBook::class)->compose($this->user, $book->refresh(), new PrinterProfile, new PrintOptions, $composed);
+        $xml = Process::timeout(30)->run(['pdftotext', '-bbox', '-f', '1', '-l', '1', $composed, '-'])->output();
+        preg_match('/yMin="([\d.]+)"[^>]*>CABEZA</', $xml, $m);
+
+        return (float) ($m[1] ?? 0);
+    };
+
+    $without = $headTop();
+
+    $this->put(route('books.update', $book), [
+        ...editPayload($book, [['id' => 'p1', 'source' => 1, 'folio' => true], ['id' => 'p2', 'source' => 2, 'folio' => true]]),
+        'layout' => ['margin_top_mm' => 30, 'margin_bottom_mm' => 30, 'margin_inside_mm' => 20, 'margin_outside_mm' => 20],
+    ])->assertSessionHasNoErrors();
+
+    expect($book->refresh()->bookLayout()->marginTopMm)->toBe(30.0);
+
+    $with = $headTop();
+
+    // La cabeza baja: el contenido empieza después del margen superior.
+    expect($without)->toBeGreaterThan(0)
+        ->and($with)->toBeGreaterThan($without + 30 * 72 / 25.4 * 0.5);
+
+    $this->put(route('books.update', $book), [
+        ...editPayload($book, [['id' => 'p1', 'source' => 1, 'folio' => true]]),
+        'layout' => ['margin_top_mm' => 100, 'margin_bottom_mm' => 0, 'margin_inside_mm' => 0, 'margin_outside_mm' => 0],
+    ])->assertSessionHasErrors('layout.margin_top_mm');
+})->skip(fn () => ! binaryAvailable('pdftoppm') || (new ExecutableFinder)->find('pdftotext') === null, 'Requiere Poppler.');
+
 it('rechaza textos con fuentes no disponibles', function () {
     $book = Book::factory()->for($this->user)->create();
 

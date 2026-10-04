@@ -71,9 +71,21 @@
       place(top + left, rect(width: 100%, height: 100%, stroke: none, fill: rgb(pagina.background.color)))
     }
   } else {
-    for el in pagina.elements {
-      if el.type == "text" { texto(el) } else if el.type == "rect" { rectangulo(el) }
-    }
+    // Los elementos acompañan al contenido de la página: se escalan y colocan
+    // dentro de los márgenes del libro, igual que la página original.
+    let f = pagina.frame
+    place(top + left, dx: f.x_mm * 1mm, dy: f.y_mm * 1mm, scale(
+      x: f.scale * 100%,
+      y: f.scale * 100%,
+      origin: top + left,
+      reflow: false,
+      block(width: data.width_mm * 1mm, height: data.height_mm * 1mm, {
+        for el in pagina.elements {
+          if el.type == "text" { texto(el) } else if el.type == "rect" { rectangulo(el) }
+        }
+      }),
+    ))
+    // El folio va en la página completa, en el margen.
     if pagina.folio != none { folio(p, pagina.folio) }
   }
   if p < data.pages.len() { pagebreak() }

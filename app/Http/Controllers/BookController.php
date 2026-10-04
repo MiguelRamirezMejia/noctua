@@ -92,6 +92,7 @@ class BookController extends Controller
                     'folio' => $item->showFolio,
                     'design' => $item->design->toArray(),
                 ], $book->sequence()->items),
+                'layout' => $book->bookLayout()->toArray(),
                 'folios' => [
                     'enabled' => $folios->enabled,
                     'first_numbered_page' => $folios->firstNumberedPage,
@@ -120,6 +121,7 @@ class BookController extends Controller
 
         $book->setSequence($request->sequence());
         $book->setFolioSettings($request->folioSettings());
+        $book->setBookLayout($request->bookLayout());
         $book->title = $request->string('title')->trim()->toString();
         $book->save();
 

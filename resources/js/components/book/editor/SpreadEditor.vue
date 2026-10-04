@@ -37,8 +37,10 @@ import PageCanvas from '@/components/book/editor/PageCanvas.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { contentFrame } from '@/lib/layout';
 import { cloneData, toHex } from '@/lib/richText';
 import type {
+    BookLayout,
     BookPage,
     FolioSettings,
     PageDesign,
@@ -58,6 +60,7 @@ const props = defineProps<{
     folioTexts: (string | null)[];
     fonts: FontFamilyInfo[];
     printScale: number;
+    layout: BookLayout;
     pageImageBase: string;
     editableTextBase: string;
     previewUrl: string;
@@ -384,6 +387,44 @@ const fontGroups = computed(() => {
     return [...groups.entries()];
 });
 
+// --- Cambios para todo el libro ---
+function applyBackgroundToAll() {
+    const background = activePage.value.design.background;
+    const what = background ? 'este fondo' : 'sin fondo';
+
+    if (
+        !window.confirm(
+            `¿Dejar ${what} en las ${props.pages.length} páginas del libro?`,
+        )
+    ) {
+        return;
+    }
+
+    for (const page of props.pages) {
+        page.design.background = background ? { ...background } : null;
+    }
+}
+
+function applyFontToAll() {
+    const font = selectedText.value?.font;
+    const boxes = props.pages.flatMap((p) =>
+        p.design.elements.filter((e): e is TextElement => e.type === 'text'),
+    );
+
+    if (
+        !font ||
+        !window.confirm(
+            `¿Usar «${font}» en los ${boxes.length} cuadros de texto del libro?`,
+        )
+    ) {
+        return;
+    }
+
+    for (const box of boxes) {
+        box.font = font;
+    }
+}
+
 // --- Fondo de página ---
 function setBackground(color: string | null) {
     const design = activePage.value.design;
@@ -595,6 +636,7 @@ async function loadPreview() {
             body: JSON.stringify({
                 pages: props.pages,
                 folios: props.folios,
+                layout: props.layout,
                 positions: shown.map((p) => p + 1),
             }),
         });
@@ -640,6 +682,7 @@ watch(spread, schedulePreview);
 watch(
     () => [
         props.folios,
+        props.layout,
         positions.value.map((p) => (p === null ? null : props.pages[p])),
     ],
     schedulePreview,
@@ -788,6 +831,15 @@ watch(
                                 :folio-text="folioTexts[p]"
                                 :folios="folios"
                                 :print-scale="printScale"
+                                :frame="
+                                    contentFrame(
+                                        layout,
+                                        widthMm,
+                                        heightMm,
+                                        printScale,
+                                        p + 1,
+                                    )
+                                "
                                 :selected-id="
                                     activeIndex === p ? selectedId : null
                                 "
@@ -1003,6 +1055,17 @@ watch(
                         class="h-9 w-full cursor-pointer rounded border"
                         aria-label="Color de fondo del cuadro"
                     />
+
+                    <div class="grid gap-2 border-t pt-4">
+                        <span>Todo el libro</span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            @click="applyFontToAll"
+                        >
+                            <Type /> Usar esta letra en todos los textos
+                        </Button>
+                    </div>
                 </div>
 
                 <!-- Rectángulo -->
@@ -1111,6 +1174,13 @@ watch(
                             </template>
                         </p>
                     </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        @click="applyBackgroundToAll"
+                    >
+                        <Copy /> Aplicar este fondo a todas las páginas
+                    </Button>
                     <div
                         v-if="activePage.source !== null"
                         class="grid gap-2 border-t pt-4"

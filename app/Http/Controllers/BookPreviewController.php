@@ -115,6 +115,7 @@ class BookPreviewController extends Controller
                 $request->sequence(),
                 $request->folioSettings(),
                 $positions,
+                $request->bookLayout(),
             );
 
             $process = new Process(

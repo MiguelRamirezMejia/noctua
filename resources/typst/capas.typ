@@ -2,6 +2,8 @@
 // página de origen. Se compila dos veces:
 //   capa = "debajo": fondos de color (van detrás de la página original).
 //   capa = "encima": cuadros de texto, rectángulos y folios.
+#import "marcos.typ": marco
+
 #let data = json(sys.inputs.data)
 #let capa = sys.inputs.capa
 
@@ -71,6 +73,10 @@
       place(top + left, rect(width: 100%, height: 100%, stroke: none, fill: rgb(pagina.background.color)))
     }
   } else {
+    // El marco va en la página completa, como el folio, y debajo de los cuadros.
+    if pagina.border and data.border != none {
+      place(top + left, marco(data.border, data.width_mm * 1mm, data.height_mm * 1mm))
+    }
     // Los elementos acompañan al contenido de la página: se escalan y colocan
     // dentro de los márgenes del libro, igual que la página original.
     let f = pagina.frame

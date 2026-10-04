@@ -1,7 +1,9 @@
 <?php
 
 use App\Domain\Book\BookLayout;
+use App\Domain\Book\BorderStyle;
 use App\Domain\Book\InvalidPageSequence;
+use App\Domain\Book\PageBorder;
 use App\Domain\Printing\Size;
 
 it('no transforma el contenido sin márgenes', function () {
@@ -48,3 +50,21 @@ it('se guarda y se lee', function () {
     expect(BookLayout::fromArray($layout->toArray()))->toEqual($layout)
         ->and(BookLayout::fromArray(null))->toEqual(new BookLayout);
 });
+
+it('guarda y lee el marco decorativo con sus medidas impresas', function () {
+    $layout = BookLayout::fromArray(['border' => ['style' => 'greca', 'color' => '#1E3A8A', 'width_pt' => 1, 'inset_mm' => 12, 'unit_mm' => 7]]);
+
+    expect($layout->border?->style)->toBe(BorderStyle::GreekKey)
+        ->and($layout->toArray()['border'])->toBe(['style' => 'greca', 'color' => '#1e3a8a', 'width_pt' => 1.0, 'inset_mm' => 12.0, 'unit_mm' => 7.0])
+        // En la página de origen se compensa la escala de impresión.
+        ->and($layout->border?->forPage(0.5)['inset_mm'])->toBe(24.0)
+        ->and(BookLayout::fromArray([])->border)->toBeNull();
+});
+
+it('rechaza marcos con medidas imposibles', function (array $args) {
+    new PageBorder(...$args);
+})->throws(InvalidPageSequence::class)->with([
+    'trazo demasiado fino' => [['widthPt' => 0.1]],
+    'pegado al borde' => [['insetMm' => 1]],
+    'adornos enormes' => [['unitMm' => 30]],
+]);

@@ -135,6 +135,7 @@ Al imprimir, cada página se arma apilando, de abajo arriba:
 2. **Página de origen** (FPDI), o su versión **sin texto** si el usuario hizo el texto editable, encajada en el marco de márgenes.
 3. **Tinte** (FPDF con fusión _multiply_): fondo de color «teñido».
 4. Capa **encima** (Typst): cuadros de texto, rectángulos y folios.
+   El **marco decorativo** va en esta capa, a página completa (no se reduce con los márgenes) y debajo de los cuadros de texto.
 
 Typst compila todas las páginas de cada capa en un único PDF (una página por página del libro), lo que es mucho más rápido que compilar página a página.
 

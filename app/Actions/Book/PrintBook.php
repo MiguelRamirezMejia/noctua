@@ -61,7 +61,7 @@ final readonly class PrintBook
         $page = $book->pageSize();
         $tmp = sys_get_temp_dir().DIRECTORY_SEPARATOR.'noctua-capas-'.bin2hex(random_bytes(6));
         $under = $this->layers->needsUnder($sequence) ? "{$tmp}-debajo.pdf" : null;
-        $over = $this->layers->needsOver($sequence, $folios) ? "{$tmp}-encima.pdf" : null;
+        $over = $this->layers->needsOver($sequence, $folios, $layout->border) ? "{$tmp}-encima.pdf" : null;
 
         try {
             // Escala con la que la página llegará al papel, para que el folio salga al tamaño pedido.
@@ -77,7 +77,7 @@ final readonly class PrintBook
             }
 
             if ($over !== null) {
-                $this->layers->render('encima', $sequence, $folios, $page, $scale, $fontPaths, $over, $frames);
+                $this->layers->render('encima', $sequence, $folios, $page, $scale, $fontPaths, $over, $frames, $layout->border);
             }
 
             $textless = [];

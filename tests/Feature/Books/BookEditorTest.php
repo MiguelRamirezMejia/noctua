@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Book\PrintBook;
+use App\Domain\Book\BorderStyle;
 use App\Domain\Printing\Pdf\TestDocument;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
@@ -97,7 +98,7 @@ it('crea un libro desde un PDF con sus miniaturas y lo abre en el editor', funct
     $this->get(route('books.edit', $book))
         ->assertInertia(fn (Assert $page) => $page
             ->component('books/Edit')
-            ->where('book.pages.0', ['id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => null, 'elements' => [], 'hide_source_text' => false]])
+            ->where('book.pages.0', ['id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => null, 'elements' => [], 'hide_source_text' => false, 'hide_border' => false]])
             ->where('previewScale', fn ($scale) => $scale < 1));
 
     $this->get(route('books.thumbnail', [$book, 1]))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
@@ -436,6 +437,66 @@ it('aplica los márgenes del libro al contenido de cada página', function () {
         'layout' => ['margin_top_mm' => 100, 'margin_bottom_mm' => 0, 'margin_inside_mm' => 0, 'margin_outside_mm' => 0],
     ])->assertSessionHasErrors('layout.margin_top_mm');
 })->skip(fn () => ! binaryAvailable('pdftoppm') || (new ExecutableFinder)->find('pdftotext') === null, 'Requiere Poppler.');
+
+it('imprime el marco decorativo en las páginas que lo llevan', function () {
+    $book = uploadBook($this->user, 2);
+    $border = ['style' => 'doble', 'color' => '#000000', 'width_pt' => 1.5, 'inset_mm' => 10, 'unit_mm' => 6];
+
+    $this->put(route('books.update', $book), [
+        ...editPayload($book, [
+            ['id' => 'b1', 'source' => null, 'folio' => false],
+            ['id' => 'b2', 'source' => null, 'folio' => false, 'design' => ['background' => null, 'elements' => [], 'hide_border' => true]],
+        ]),
+        'layout' => ['margin_top_mm' => 0, 'margin_bottom_mm' => 0, 'margin_inside_mm' => 0, 'margin_outside_mm' => 0, 'border' => $border],
+    ])->assertSessionHasNoErrors();
+
+    $book->refresh();
+    expect($book->bookLayout()->border?->toArray())->toBe([...$border, 'width_pt' => 1.5, 'inset_mm' => 10.0, 'unit_mm' => 6.0])
+        ->and($book->sequence()->items[1]->design->hideBorder)->toBeTrue();
+
+    $composed = tempnam(sys_get_temp_dir(), 'noctua-marco-');
+    app(PrintBook::class)->compose($this->user, $book, new PrinterProfile, new PrintOptions, $composed);
+    $prefix = tempnam(sys_get_temp_dir(), 'noctua-marco-png-');
+    Process::timeout(30)->run([config()->string('noctua.binaries.pdftoppm'), '-r', '72', '-gray', '-png', $composed, $prefix])->throw();
+
+    // Lo más oscuro alrededor de un punto (en mm) de una página rasterizada.
+    $darkest = function (string $png, float $xMm, float $yMm): int {
+        $image = imagecreatefrompng($png);
+        $min = 255;
+        for ($dx = -3; $dx <= 3; $dx++) {
+            for ($dy = -3; $dy <= 3; $dy++) {
+                $min = min($min, imagecolorsforindex($image, imagecolorat($image, (int) round($xMm / 25.4 * 72) + $dx, (int) round($yMm / 25.4 * 72) + $dy))['red']);
+            }
+        }
+
+        return $min;
+    };
+    $pages = glob($prefix.'-*.png') ?: [];
+    sort($pages);
+    $width = $book->pageSize()->widthMm;
+
+    expect($pages)->toHaveCount(2)
+        // Página 1: el trazo exterior del marco, a 10 mm del borde.
+        ->and($darkest($pages[0], $width * 0.3, 10))->toBeLessThan(100)
+        ->and($darkest($pages[0], $width * 0.5, 60))->toBeGreaterThan(240)
+        // Página 2: sin marco.
+        ->and($darkest($pages[1], $width * 0.3, 10))->toBeGreaterThan(240);
+
+    array_map(unlink(...), [...$pages, $composed]);
+
+    $this->put(route('books.update', $book), [
+        ...editPayload($book, [['id' => 'p1', 'source' => 1, 'folio' => true]]),
+        'layout' => ['border' => [...$border, 'style' => 'inventado', 'inset_mm' => 80]],
+    ])->assertSessionHasErrors(['layout.border.style', 'layout.border.inset_mm']);
+})->skip(fn () => ! binaryAvailable('typst') || ! binaryAvailable('pdftoppm'), 'Requiere Typst y Poppler.');
+
+it('dibuja la vista previa de cada diseño de marco en SVG', function (string $style) {
+    $this->actingAs($this->user)->get(route('borders.preview', [
+        'style' => $style, 'color' => '#5b3a1e', 'width_pt' => 0.8, 'inset_mm' => 8, 'unit_mm' => 6,
+        'page_width_mm' => 139.7, 'page_height_mm' => 215.9, 'print_scale' => 1,
+    ]))->assertOk()->assertHeader('Content-Type', 'image/svg+xml');
+})->with(array_map(fn (BorderStyle $s): string => $s->value, BorderStyle::cases()))
+    ->skip(fn () => ! binaryAvailable('typst'), 'Requiere Typst.');
 
 it('rechaza textos con fuentes no disponibles', function () {
     $book = Book::factory()->for($this->user)->create();

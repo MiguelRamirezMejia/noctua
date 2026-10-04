@@ -18,6 +18,8 @@ final readonly class BookLayout
         public float $marginBottomMm = 0.0,
         public float $marginInsideMm = 0.0,
         public float $marginOutsideMm = 0.0,
+        /** Marco decorativo de las páginas; null = sin marco. */
+        public ?PageBorder $border = null,
     ) {
         foreach ([$marginTopMm, $marginBottomMm, $marginInsideMm, $marginOutsideMm] as $margin) {
             if ($margin < 0 || $margin > self::MAX_MARGIN_MM) {
@@ -64,7 +66,7 @@ final readonly class BookLayout
     }
 
     /**
-     * @return array{margin_top_mm: float, margin_bottom_mm: float, margin_inside_mm: float, margin_outside_mm: float}
+     * @return array{margin_top_mm: float, margin_bottom_mm: float, margin_inside_mm: float, margin_outside_mm: float, border: array{style: string, color: string, width_pt: float, inset_mm: float, unit_mm: float}|null}
      */
     public function toArray(): array
     {
@@ -73,6 +75,7 @@ final readonly class BookLayout
             'margin_bottom_mm' => $this->marginBottomMm,
             'margin_inside_mm' => $this->marginInsideMm,
             'margin_outside_mm' => $this->marginOutsideMm,
+            'border' => $this->border?->toArray(),
         ];
     }
 
@@ -81,6 +84,6 @@ final readonly class BookLayout
         $d = is_array($data) ? $data : [];
         $mm = fn (string $key): float => is_numeric($d[$key] ?? null) ? (float) $d[$key] : 0.0;
 
-        return new self($mm('margin_top_mm'), $mm('margin_bottom_mm'), $mm('margin_inside_mm'), $mm('margin_outside_mm'));
+        return new self($mm('margin_top_mm'), $mm('margin_bottom_mm'), $mm('margin_inside_mm'), $mm('margin_outside_mm'), PageBorder::fromArray($d['border'] ?? null));
     }
 }

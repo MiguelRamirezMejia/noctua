@@ -6,6 +6,7 @@ use App\Actions\Book\ExtractPageText;
 use App\Actions\Book\RenderPageImage;
 use App\Actions\Book\RenderThumbnails;
 use App\Actions\Book\TextlessPage;
+use App\Domain\Typesetting\Typst\BorderPreview;
 use App\Domain\Typesetting\Typst\PageLayers;
 use App\Domain\Typesetting\Typst\TypstRunner;
 use Carbon\CarbonImmutable;
@@ -30,6 +31,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(PageLayers::class, fn (Application $app): PageLayers => new PageLayers(
             $app->make(TypstRunner::class),
             resource_path('typst/capas.typ'),
+        ));
+
+        $this->app->singleton(BorderPreview::class, fn (Application $app): BorderPreview => new BorderPreview(
+            $app->make(TypstRunner::class),
+            resource_path('typst/marco-vista.typ'),
+            storage_path('framework/cache/noctua-marcos'),
         ));
 
         $this->app->singleton(TextlessPage::class, fn (): TextlessPage => new TextlessPage(

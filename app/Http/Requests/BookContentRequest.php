@@ -3,11 +3,13 @@
 namespace App\Http\Requests;
 
 use App\Domain\Book\BookLayout;
+use App\Domain\Book\BorderStyle;
 use App\Domain\Book\Design\InvalidPageDesign;
 use App\Domain\Book\Design\PageDesign;
 use App\Domain\Book\FolioPosition;
 use App\Domain\Book\FolioSettings;
 use App\Domain\Book\InvalidPageSequence;
+use App\Domain\Book\PageBorder;
 use App\Domain\Book\PageItem;
 use App\Domain\Book\PageSequence;
 use App\Fonts\FontLibrary;
@@ -51,6 +53,12 @@ class BookContentRequest extends FormRequest
             'layout.margin_bottom_mm' => ['sometimes', 'numeric', 'between:0,'.BookLayout::MAX_MARGIN_MM],
             'layout.margin_inside_mm' => ['sometimes', 'numeric', 'between:0,'.BookLayout::MAX_MARGIN_MM],
             'layout.margin_outside_mm' => ['sometimes', 'numeric', 'between:0,'.BookLayout::MAX_MARGIN_MM],
+            'layout.border' => ['sometimes', 'nullable', 'array'],
+            'layout.border.style' => ['required_with:layout.border', Rule::enum(BorderStyle::class)],
+            'layout.border.color' => ['required_with:layout.border', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'layout.border.width_pt' => ['required_with:layout.border', 'numeric', 'between:'.PageBorder::MIN_WIDTH_PT.','.PageBorder::MAX_WIDTH_PT],
+            'layout.border.inset_mm' => ['required_with:layout.border', 'numeric', 'between:'.PageBorder::MIN_INSET_MM.','.PageBorder::MAX_INSET_MM],
+            'layout.border.unit_mm' => ['required_with:layout.border', 'numeric', 'between:'.PageBorder::MIN_UNIT_MM.','.PageBorder::MAX_UNIT_MM],
         ];
     }
 

@@ -30,6 +30,7 @@ Hacer esto a mano es lento y propenso a errores. Noctua lo automatiza, y además
 - Subir el PDF de un libro (Canva, Word, InDesign…). El original se guarda intacto; lo que edites se aplica al imprimir.
 - **Organizar páginas**: reordenar arrastrando, quitar y devolver páginas, duplicar, insertar páginas en blanco.
 - **Numerar páginas**: desde qué página, con qué número, posición (centrado o esquina exterior), tipo de letra, tamaño y margen; quitar el número en páginas concretas.
+- **Marco decorativo** alrededor de las páginas: diez diseños (línea, doble, clásico, esquinas, art déco, puntos, ondas, festón, greca griega, estrellas), con color, grosor, distancia al borde y tamaño de los adornos; se puede quitar en páginas concretas.
 - Páginas más grandes que media carta (por ejemplo, carta) se **ajustan sin recortes**.
 
 ### Editor de pliego

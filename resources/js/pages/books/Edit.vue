@@ -22,6 +22,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { borderPreviewUrl, DEFAULT_BORDER } from '@/lib/border';
 import { contentFrame } from '@/lib/layout';
 import { cloneData } from '@/lib/richText';
 import { loadFontFaces } from '@/composables/useFontFaces';
@@ -38,6 +39,7 @@ import {
 import type {
     BookLayout,
     BookPage,
+    BorderStyle,
     EditableBook,
     FolioPosition,
     FolioSettings,
@@ -56,6 +58,7 @@ const props = defineProps<{
     pageFits: PageFitOption[];
     printDefaults: PrintDefaults;
     previewScale: number;
+    borderStyles: Option<BorderStyle>[];
 }>();
 
 setLayoutProps({
@@ -74,7 +77,12 @@ const form = useForm<{
     title: props.book.title,
     pages: cloneData(props.book.pages),
     folios: { ...props.book.folios },
-    layout: { ...props.book.layout },
+    layout: {
+        ...props.book.layout,
+        border: props.book.layout.border
+            ? { ...props.book.layout.border }
+            : null,
+    },
 });
 
 const selectClass =
@@ -137,6 +145,7 @@ const emptyDesign = (): PageDesign => ({
     background: null,
     elements: [],
     hide_source_text: false,
+    hide_border: false,
 });
 
 const uid = (prefix: string) =>
@@ -259,6 +268,57 @@ function applyPreset(mm: number) {
     }
 }
 
+// --- Marco decorativo ---
+const borderColors = [
+    '#5b3a1e',
+    '#1f2937',
+    '#7c2d12',
+    '#14532d',
+    '#1e3a8a',
+    '#701a75',
+    '#b45309',
+    '#9f1239',
+];
+
+/** SVG del marco a la escala de impresión, igual para todas las páginas. */
+const borderUrl = computed(() =>
+    form.layout.border
+        ? borderPreviewUrl(
+              form.layout.border,
+              props.book.width_mm,
+              props.book.height_mm,
+              props.previewScale,
+          )
+        : null,
+);
+
+/** Muestra de cada diseño con el color y las medidas elegidos. */
+const styleSample = (style: BorderStyle) =>
+    borderPreviewUrl(
+        { ...(form.layout.border ?? DEFAULT_BORDER), style },
+        props.book.width_mm,
+        props.book.height_mm,
+        props.previewScale,
+    );
+
+function setBorderEnabled(on: boolean) {
+    form.layout.border = on ? { ...DEFAULT_BORDER } : null;
+}
+
+function chooseBorderStyle(style: BorderStyle) {
+    form.layout.border = { ...(form.layout.border ?? DEFAULT_BORDER), style };
+}
+
+const pagesWithoutBorder = computed(
+    () => form.pages.filter((p) => p.design.hide_border).length,
+);
+
+function showBorderOnAllPages() {
+    for (const page of form.pages) {
+        page.design.hide_border = false;
+    }
+}
+
 // --- Editor de pliego ---
 const openSpread = ref<number | null>(null);
 const pageImageBase = pageImage({ book: props.book.id, page: 0 }).url;
@@ -375,6 +435,11 @@ const offsetFields = [
                                 :width-mm="book.width_mm"
                                 :height-mm="book.height_mm"
                                 :print-scale="previewScale"
+                                :border-url="
+                                    form.pages[i].design.hide_border
+                                        ? null
+                                        : borderUrl
+                                "
                                 :frame="
                                     contentFrame(
                                         form.layout,
@@ -458,6 +523,172 @@ const offsetFields = [
                                 form.errors['layout.margin_bottom_mm'] ??
                                 form.errors['layout.margin_inside_mm'] ??
                                 form.errors['layout.margin_outside_mm']
+                            "
+                        />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Marco decorativo</CardTitle>
+                        <CardDescription>
+                            Un marco alrededor de cada página, en el margen.
+                            Puedes quitarlo en páginas concretas (por ejemplo,
+                            la portada) desde el editor de pliego.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent class="grid gap-4">
+                        <label class="flex items-center gap-2 text-sm">
+                            <input
+                                :checked="form.layout.border != null"
+                                type="checkbox"
+                                class="size-4 accent-primary"
+                                @change="
+                                    setBorderEnabled(
+                                        ($event.target as HTMLInputElement)
+                                            .checked,
+                                    )
+                                "
+                            />
+                            Poner marco a las páginas
+                        </label>
+
+                        <div
+                            class="grid grid-cols-5 gap-2"
+                            role="radiogroup"
+                            aria-label="Diseño del marco"
+                        >
+                            <button
+                                v-for="style in borderStyles"
+                                :key="style.value"
+                                type="button"
+                                role="radio"
+                                :aria-checked="
+                                    form.layout.border?.style === style.value
+                                "
+                                :title="style.label"
+                                class="grid gap-1 rounded-md p-1 text-center text-[10px] leading-tight text-muted-foreground transition hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                                :class="
+                                    form.layout.border?.style === style.value
+                                        ? 'bg-accent font-medium text-foreground ring-2 ring-primary'
+                                        : ''
+                                "
+                                @click="chooseBorderStyle(style.value)"
+                            >
+                                <span
+                                    class="block w-full rounded-sm border bg-white shadow-xs"
+                                    :style="{
+                                        aspectRatio: `${book.width_mm} / ${book.height_mm}`,
+                                    }"
+                                >
+                                    <img
+                                        :src="styleSample(style.value)"
+                                        alt=""
+                                        loading="lazy"
+                                        class="size-full"
+                                    />
+                                </span>
+                                {{ style.label }}
+                            </button>
+                        </div>
+
+                        <template v-if="form.layout.border">
+                            <div class="grid gap-2">
+                                <Label>Color</Label>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <button
+                                        v-for="color in borderColors"
+                                        :key="color"
+                                        type="button"
+                                        class="size-6 rounded-full border shadow-xs transition hover:scale-110"
+                                        :class="
+                                            form.layout.border.color === color
+                                                ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+                                                : ''
+                                        "
+                                        :style="{ backgroundColor: color }"
+                                        :aria-label="`Color ${color}`"
+                                        @click="
+                                            form.layout.border.color = color
+                                        "
+                                    />
+                                    <input
+                                        v-model="form.layout.border.color"
+                                        type="color"
+                                        class="h-7 w-10 cursor-pointer rounded border bg-transparent"
+                                        aria-label="Otro color"
+                                    />
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="grid gap-2">
+                                    <Label for="border-width"
+                                        >Grosor (pt)</Label
+                                    >
+                                    <Input
+                                        id="border-width"
+                                        v-model.number="
+                                            form.layout.border.width_pt
+                                        "
+                                        type="number"
+                                        min="0.2"
+                                        max="4"
+                                        step="0.1"
+                                    />
+                                </div>
+                                <div class="grid gap-2">
+                                    <Label for="border-inset"
+                                        >Al borde (mm)</Label
+                                    >
+                                    <Input
+                                        id="border-inset"
+                                        v-model.number="
+                                            form.layout.border.inset_mm
+                                        "
+                                        type="number"
+                                        min="2"
+                                        max="40"
+                                        step="0.5"
+                                    />
+                                </div>
+                                <div class="grid gap-2">
+                                    <Label for="border-unit"
+                                        >Adornos (mm)</Label
+                                    >
+                                    <Input
+                                        id="border-unit"
+                                        v-model.number="
+                                            form.layout.border.unit_mm
+                                        "
+                                        type="number"
+                                        min="3"
+                                        max="15"
+                                        step="0.5"
+                                    />
+                                </div>
+                            </div>
+                            <p
+                                v-if="pagesWithoutBorder > 0"
+                                class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+                            >
+                                {{ pagesWithoutBorder }} página(s) sin marco.
+                                <Button
+                                    size="sm"
+                                    variant="link"
+                                    class="h-auto p-0"
+                                    @click="showBorderOnAllPages"
+                                >
+                                    Ponerlo en todas
+                                </Button>
+                            </p>
+                        </template>
+                        <InputError
+                            :message="
+                                form.errors['layout.border.width_pt'] ??
+                                form.errors['layout.border.inset_mm'] ??
+                                form.errors['layout.border.unit_mm'] ??
+                                form.errors['layout.border.color'] ??
+                                form.errors['layout.border.style']
                             "
                         />
                     </CardContent>
@@ -826,6 +1057,7 @@ const offsetFields = [
         :fonts="fonts"
         :print-scale="previewScale"
         :layout="form.layout"
+        :border-url="borderUrl"
         :page-image-base="pageImageBase"
         :editable-text-base="editableTextBase"
         :preview-url="previewUrl"

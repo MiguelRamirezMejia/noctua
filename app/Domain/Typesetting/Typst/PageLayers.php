@@ -5,6 +5,7 @@ namespace App\Domain\Typesetting\Typst;
 use App\Domain\Book\ContentFrame;
 use App\Domain\Book\Design\BackgroundMode;
 use App\Domain\Book\FolioSettings;
+use App\Domain\Book\PageBorder;
 use App\Domain\Book\PageItem;
 use App\Domain\Book\PageSequence;
 use App\Domain\Printing\Size;
@@ -32,10 +33,10 @@ final readonly class PageLayers
         return false;
     }
 
-    public function needsOver(PageSequence $sequence, FolioSettings $folios): bool
+    public function needsOver(PageSequence $sequence, FolioSettings $folios, ?PageBorder $border = null): bool
     {
         foreach ($sequence->items as $item) {
-            if ($item->design->elements !== []) {
+            if ($item->design->elements !== [] || ($border !== null && ! $item->design->hideBorder)) {
                 return true;
             }
         }
@@ -48,16 +49,18 @@ final readonly class PageLayers
      * @param  float  $printScale  Escala de impresión: el folio se compensa para salir al tamaño pedido.
      * @param  list<string>  $fontPaths
      * @param  array<int, ContentFrame>  $frames  Posición => dónde va el contenido (márgenes del libro).
+     * @param  PageBorder|null  $border  Marco decorativo del libro.
      */
-    public function render(string $layer, PageSequence $sequence, FolioSettings $folios, Size $page, float $printScale, array $fontPaths, string $outputPath, array $frames = []): void
+    public function render(string $layer, PageSequence $sequence, FolioSettings $folios, Size $page, float $printScale, array $fontPaths, string $outputPath, array $frames = [], ?PageBorder $border = null): void
     {
         $workdir = sys_get_temp_dir().DIRECTORY_SEPARATOR.'noctua-capas-'.bin2hex(random_bytes(6));
         mkdir($workdir);
 
         try {
             copy($this->template, $workdir.DIRECTORY_SEPARATOR.'capas.typ');
+            copy(dirname($this->template).DIRECTORY_SEPARATOR.'marcos.typ', $workdir.DIRECTORY_SEPARATOR.'marcos.typ');
             file_put_contents($workdir.DIRECTORY_SEPARATOR.'data.json', json_encode(
-                $this->data($sequence, $folios, $page, $printScale, $frames),
+                $this->data($sequence, $folios, $page, $printScale, $frames, $border),
                 JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION,
             ));
 
@@ -72,7 +75,7 @@ final readonly class PageLayers
      * @param  array<int, ContentFrame>  $frames
      * @return array<string, mixed>
      */
-    private function data(PageSequence $sequence, FolioSettings $folios, Size $page, float $printScale, array $frames): array
+    private function data(PageSequence $sequence, FolioSettings $folios, Size $page, float $printScale, array $frames, ?PageBorder $border): array
     {
         $texts = $sequence->folios($folios);
 
@@ -85,10 +88,12 @@ final readonly class PageLayers
                 'margin_mm' => $folios->marginMm / $printScale,
                 'position' => $folios->position->value,
             ],
+            'border' => $border?->forPage($printScale),
             'pages' => array_map(fn (PageItem $item, int $index): array => [
                 ...$item->design->toArray(),
                 'folio' => isset($texts[$index + 1]) ? $texts[$index + 1]->text : null,
                 'frame' => self::frame($frames[$index + 1] ?? new ContentFrame(1.0, 0.0, 0.0)),
+                'border' => $border !== null && ! $item->design->hideBorder,
             ], $sequence->items, array_keys($sequence->items)),
         ];
     }

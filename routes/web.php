@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookPreviewController;
+use App\Http\Controllers\BorderPreviewController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FontController;
 use App\Http\Controllers\ImpositionController;
@@ -24,6 +25,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('libros/{book}/paginas/{page}/imagen', [BookPreviewController::class, 'pageImage'])->whereNumber('page')->name('books.page-image');
     Route::post('libros/{book}/vista-previa', [BookPreviewController::class, 'preview'])->name('books.preview');
     Route::post('libros/{book}/paginas/{page}/texto-editable', [BookPreviewController::class, 'editableText'])->whereNumber('page')->name('books.editable-text');
+
+    Route::get('marcos/vista', BorderPreviewController::class)->name('borders.preview');
 
     Route::get('fuentes', [FontController::class, 'index'])->name('fonts.index');
     Route::post('fuentes', [FontController::class, 'store'])->name('fonts.store');

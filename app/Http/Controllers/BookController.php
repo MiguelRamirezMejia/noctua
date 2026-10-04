@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Actions\Book\CreateBookFromPdf;
 use App\Actions\Book\PrintBook;
+use App\Domain\Book\BorderStyle;
 use App\Domain\Book\FolioPosition;
 use App\Domain\Book\PageItem;
 use App\Domain\Printing\PageFit;
@@ -112,6 +113,7 @@ class BookController extends Controller
                 $this->defaultScale($book) < 1 ? PageFit::Fit : PageFit::Actual,
             ),
             'previewScale' => $this->defaultScale($book),
+            'borderStyles' => array_map(fn (BorderStyle $style): array => ['value' => $style->value, 'label' => $style->label()], BorderStyle::cases()),
         ]);
     }
 

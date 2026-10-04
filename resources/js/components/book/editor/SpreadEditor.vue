@@ -61,6 +61,8 @@ const props = defineProps<{
     fonts: FontFamilyInfo[];
     printScale: number;
     layout: BookLayout;
+    /** SVG del marco decorativo del libro, o null si no tiene. */
+    borderUrl: string | null;
     pageImageBase: string;
     editableTextBase: string;
     previewUrl: string;
@@ -831,6 +833,11 @@ watch(
                                 :folio-text="folioTexts[p]"
                                 :folios="folios"
                                 :print-scale="printScale"
+                                :border-url="
+                                    pages[p].design.hide_border
+                                        ? null
+                                        : borderUrl
+                                "
                                 :frame="
                                     contentFrame(
                                         layout,
@@ -1181,6 +1188,22 @@ watch(
                     >
                         <Copy /> Aplicar este fondo a todas las páginas
                     </Button>
+                    <label
+                        v-if="layout.border"
+                        class="flex items-center gap-2 border-t pt-4 text-sm"
+                    >
+                        <input
+                            :checked="!activePage.design.hide_border"
+                            type="checkbox"
+                            class="size-4 accent-primary"
+                            @change="
+                                activePage.design.hide_border = !(
+                                    $event.target as HTMLInputElement
+                                ).checked
+                            "
+                        />
+                        Marco decorativo en esta página
+                    </label>
                     <div
                         v-if="activePage.source !== null"
                         class="grid gap-2 border-t pt-4"

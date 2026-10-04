@@ -25,6 +25,8 @@ const props = defineProps<{
     printScale: number;
     /** Dónde va el contenido según los márgenes del libro. */
     frame: ContentFrame;
+    /** SVG del marco decorativo, o null si esta página no lleva. */
+    borderUrl?: string | null;
     selectedId: string | null;
     editingId: string | null;
     active: boolean;
@@ -239,6 +241,16 @@ function updateSpans(el: TextElement, spans: TextSpan[]) {
             v-if="background?.mode === 'tint'"
             class="pointer-events-none absolute inset-0 mix-blend-multiply"
             :style="{ backgroundColor: background.color }"
+        />
+
+        <!-- Marco decorativo: SVG de Typst a página completa, como al imprimir. -->
+        <img
+            v-if="borderUrl"
+            :src="borderUrl"
+            alt=""
+            loading="lazy"
+            class="pointer-events-none absolute inset-0 size-full select-none"
+            draggable="false"
         />
 
         <!-- Los elementos acompañan al contenido dentro de los márgenes del libro. -->

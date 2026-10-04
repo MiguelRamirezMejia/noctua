@@ -59,6 +59,8 @@ export type PageDesign = {
     elements: PageElement[];
     /** La página se usa sin su texto original (convertido en cuadros editables). */
     hide_source_text: boolean;
+    /** Esta página no lleva el marco decorativo del libro. */
+    hide_border?: boolean;
 };
 
 export type FolioPosition = 'bottom-center' | 'bottom-outer' | 'top-outer';
@@ -73,12 +75,34 @@ export type FolioSettings = {
     margin_mm: number;
 };
 
-/** Márgenes en espejo, en mm tal como quedan impresos. */
+export type BorderStyle =
+    | 'linea'
+    | 'doble'
+    | 'clasico'
+    | 'esquinas'
+    | 'deco'
+    | 'puntos'
+    | 'ondas'
+    | 'feston'
+    | 'greca'
+    | 'estrellas';
+
+/** Marco decorativo de las páginas, con medidas tal como quedan impresas. */
+export type PageBorder = {
+    style: BorderStyle;
+    color: string;
+    width_pt: number;
+    inset_mm: number;
+    unit_mm: number;
+};
+
+/** Márgenes en espejo, en mm tal como quedan impresos, y marco decorativo. */
 export type BookLayout = {
     margin_top_mm: number;
     margin_bottom_mm: number;
     margin_inside_mm: number;
     margin_outside_mm: number;
+    border?: PageBorder | null;
 };
 
 export type EditableBook = {

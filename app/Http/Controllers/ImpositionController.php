@@ -33,7 +33,7 @@ class ImpositionController extends Controller
                 'name' => $s->info['original_name'],
                 'created_at' => $s->info['created_at'],
                 'page_count' => $s->info['page_count'],
-            ], StoredImposition::recent($user)),
+            ], StoredImposition::recent($user->publisher())),
         ]);
     }
 
@@ -46,7 +46,7 @@ class ImpositionController extends Controller
         }
 
         try {
-            $stored = $impose->handle($user, $pdf, $request->settings(), $request->printer(), $request->options());
+            $stored = $impose->handle($user->publisher(), $pdf, $request->settings(), $request->printer(), $request->options());
         } catch (InvalidArgumentException $e) {
             throw ValidationException::withMessages(['pdf' => $e->getMessage()]);
         }
@@ -58,7 +58,7 @@ class ImpositionController extends Controller
 
     public function show(string $imposition, Imposer $imposer, #[CurrentUser] User $user): Response
     {
-        $stored = StoredImposition::find($user, $imposition) ?? abort(404);
+        $stored = StoredImposition::find($user->publisher(), $imposition) ?? abort(404);
         $plan = $imposer->plan($stored->settings->forPageCount($stored->info['page_count']));
 
         return Inertia::render('imposition/Show', [
@@ -88,7 +88,7 @@ class ImpositionController extends Controller
 
     public function pdf(Request $request, string $imposition, #[CurrentUser] User $user): BinaryFileResponse
     {
-        $stored = StoredImposition::find($user, $imposition) ?? abort(404);
+        $stored = StoredImposition::find($user->publisher(), $imposition) ?? abort(404);
         $path = $stored->path(StoredImposition::OUTPUT);
 
         if ($request->boolean('download')) {

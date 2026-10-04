@@ -35,7 +35,7 @@ class BookController extends Controller
     {
         return Inertia::render('books/Index', [
             'books' => Book::query()
-                ->whereBelongsTo($user)
+                ->whereBelongsTo($user->publisher())
                 ->latest()
                 ->get()
                 ->map(fn (Book $book): array => [
@@ -103,7 +103,7 @@ class BookController extends Controller
                 ],
             ],
             'thumbnailBase' => route('books.thumbnail', [$book, 0]),
-            'fonts' => $library->catalogFor($user),
+            'fonts' => $library->catalogFor($book->publisher),
             'positions' => array_map(fn (FolioPosition $p): array => ['value' => $p->value, 'label' => $p->label()], FolioPosition::cases()),
             'pageFits' => array_map(fn (PageFit $fit): array => ['value' => $fit->value, 'label' => $fit->label()], PageFit::cases()),
             'printDefaults' => PrintDefaults::from(

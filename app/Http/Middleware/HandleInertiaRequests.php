@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Publisher;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -40,8 +42,51 @@ class HandleInertiaRequests extends Middleware
             'name' => config('app.name'),
             'auth' => [
                 'user' => $request->user(),
+                'publisher' => fn (): ?array => $this->currentPublisher($request),
+                'publishers' => fn (): array => $this->publishers($request),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    /**
+     * @return array{id: int, name: string, personal: bool, role: string|null}|null
+     */
+    private function currentPublisher(Request $request): ?array
+    {
+        $user = $request->user();
+        $publisher = $user instanceof User ? $user->currentPublisher : null;
+
+        if (! $user instanceof User || $publisher === null) {
+            return null;
+        }
+
+        return [
+            'id' => $publisher->id,
+            'name' => $publisher->name,
+            'personal' => $publisher->personal,
+            'role' => $user->roleIn($publisher)?->value,
+        ];
+    }
+
+    /**
+     * Espacios a los que pertenece el usuario: el personal primero.
+     *
+     * @return list<array{id: int, name: string, personal: bool}>
+     */
+    private function publishers(Request $request): array
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            return [];
+        }
+
+        return array_values($user->publishers()
+            ->orderByDesc('personal')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Publisher $p): array => ['id' => $p->id, 'name' => $p->name, 'personal' => $p->personal])
+            ->all());
     }
 }

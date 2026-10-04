@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Actions\Publishers\CreatePublisher;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -12,6 +13,16 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
+    /**
+     * Todo usuario nace con su espacio personal, como al registrarse.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            app(CreatePublisher::class)->personalFor($user);
+        });
+    }
+
     /**
      * The current password being used by the factory.
      */

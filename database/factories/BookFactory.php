@@ -18,6 +18,12 @@ class BookFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            // El libro es del espacio activo de quien lo crea.
+            'publisher_id' => function (array $attributes): ?int {
+                $id = User::query()->whereKey($attributes['user_id'])->value('current_publisher_id');
+
+                return is_numeric($id) ? (int) $id : null;
+            },
             'title' => fake()->sentence(3),
             'source_filename' => 'libro.pdf',
             'source_page_count' => 8,

@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Variante de una fuente (familia + peso + cursiva). Sin usuario = catálogo.
+ * Variante de una fuente (familia + peso + cursiva). Sin editorial = catálogo.
  *
  * @property int $id
- * @property int|null $user_id
+ * @property int|null $publisher_id
  * @property string $family
  * @property int $weight
  * @property bool $italic
@@ -39,20 +39,20 @@ class Font extends Model
     }
 
     /**
-     * @return BelongsTo<User, $this>
+     * @return BelongsTo<Publisher, $this>
      */
-    public function user(): BelongsTo
+    public function publisher(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Publisher::class);
     }
 
     /**
-     * Fuentes del catálogo más las propias del usuario.
+     * Fuentes del catálogo más las propias de la editorial.
      *
      * @param  Builder<Font>  $query
      */
-    public function scopeAvailableTo(Builder $query, User $user): void
+    public function scopeAvailableTo(Builder $query, Publisher $publisher): void
     {
-        $query->where(fn (Builder $q) => $q->whereNull('user_id')->orWhere('user_id', $user->id));
+        $query->where(fn (Builder $q) => $q->whereNull('publisher_id')->orWhere('publisher_id', $publisher->id));
     }
 }

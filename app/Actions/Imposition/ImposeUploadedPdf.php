@@ -6,7 +6,7 @@ use App\Domain\Imposition\ImpositionSettings;
 use App\Domain\Printing\Pdf\PdfImposer;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
-use App\Models\User;
+use App\Models\Publisher;
 use Illuminate\Http\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -22,10 +22,10 @@ final readonly class ImposeUploadedPdf
     /**
      * @param  UploadedFile|string  $pdf  Archivo subido o ruta a un PDF en disco.
      */
-    public function handle(User $user, UploadedFile|string $pdf, ImpositionSettings $settings, PrinterProfile $printer, PrintOptions $options, ?string $name = null): StoredImposition
+    public function handle(Publisher $publisher, UploadedFile|string $pdf, ImpositionSettings $settings, PrinterProfile $printer, PrintOptions $options, ?string $name = null): StoredImposition
     {
         $id = Str::lower((string) Str::ulid());
-        $directory = StoredImposition::directoryFor($user, $id);
+        $directory = StoredImposition::directoryFor($publisher, $id);
         $disk = Storage::disk('local');
 
         $disk->putFileAs($directory, is_string($pdf) ? new File($pdf) : $pdf, StoredImposition::SOURCE);

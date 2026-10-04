@@ -37,7 +37,7 @@ final readonly class PrintBook
         try {
             $this->compose($user, $book, $printer, $options, "{$tmp}.pdf");
 
-            return $this->impose->handle($user, "{$tmp}.pdf", $settings, $printer, $options, "{$book->title}.pdf");
+            return $this->impose->handle($book->publisher, "{$tmp}.pdf", $settings, $printer, $options, "{$book->title}.pdf");
         } finally {
             if (is_file("{$tmp}.pdf")) {
                 unlink("{$tmp}.pdf");
@@ -64,7 +64,7 @@ final readonly class PrintBook
         try {
             // Escala con la que la página llegará al papel, para que el folio salga al tamaño pedido.
             $scale = (new SheetLayout(Size::letterLandscape(), $page, $printer, $options->pageFit))->scale;
-            $fontPaths = $this->fonts->typstPaths($user);
+            $fontPaths = $this->fonts->typstPaths($book->publisher);
 
             if ($under !== null) {
                 $this->layers->render('debajo', $sequence, $folios, $page, $scale, $fontPaths, $under);

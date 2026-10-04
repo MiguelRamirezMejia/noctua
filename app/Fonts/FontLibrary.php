@@ -5,13 +5,13 @@ namespace App\Fonts;
 use App\Domain\Typesetting\TypesettingFailed;
 use App\Domain\Typesetting\Typst\TypstRunner;
 use App\Models\Font;
-use App\Models\User;
+use App\Models\Publisher;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Fuentes disponibles para un usuario: las incluidas en Typst, las del
- * catálogo y las que el usuario ha subido.
+ * Fuentes disponibles para una editorial: las incluidas en Typst, las del
+ * catálogo y las que sus miembros han subido.
  */
 final class FontLibrary
 {
@@ -28,10 +28,10 @@ final class FontLibrary
     /**
      * @return list<string>
      */
-    public function families(User $user): array
+    public function families(Publisher $publisher): array
     {
         $families = array_filter(
-            Font::query()->availableTo($user)->distinct()->orderBy('family')->pluck('family')->all(),
+            Font::query()->availableTo($publisher)->distinct()->orderBy('family')->pluck('family')->all(),
             is_string(...),
         );
 
@@ -43,20 +43,20 @@ final class FontLibrary
      *
      * @return list<array{family: string, label: string, category: string, own: bool, faces: list<array{id: int, weight: int, italic: bool, url: string}>}>
      */
-    public function catalogFor(User $user): array
+    public function catalogFor(Publisher $publisher): array
     {
         $families = [];
         foreach (self::BUILTIN as $family) {
             $families[$family] = ['family' => $family, 'label' => $family, 'category' => 'Serif', 'own' => false, 'faces' => []];
         }
 
-        $fonts = Font::query()->availableTo($user)->orderBy('family')->orderBy('weight')->orderBy('italic')->get();
+        $fonts = Font::query()->availableTo($publisher)->orderBy('family')->orderBy('weight')->orderBy('italic')->get();
         foreach ($fonts as $font) {
             $families[$font->family] ??= [
                 'family' => $font->family,
                 'label' => $font->catalog_family ?? $font->family,
-                'category' => $font->user_id === null ? ($font->category ?? 'Otras') : 'Mis fuentes',
-                'own' => $font->user_id !== null,
+                'category' => $font->publisher_id === null ? ($font->category ?? 'Otras') : 'Fuentes de la editorial',
+                'own' => $font->publisher_id !== null,
                 'faces' => [],
             ];
             $families[$font->family]['faces'][] = [
@@ -73,23 +73,23 @@ final class FontLibrary
         return $list;
     }
 
-    public function has(User $user, string $family): bool
+    public function has(Publisher $publisher, string $family): bool
     {
         return in_array($family, self::BUILTIN, true)
-            || Font::query()->availableTo($user)->where('family', $family)->exists();
+            || Font::query()->availableTo($publisher)->where('family', $family)->exists();
     }
 
     /**
-     * Directorios que Typst debe ver al componer para este usuario.
+     * Directorios que Typst debe ver al componer para esta editorial.
      *
      * @return list<string>
      */
-    public function typstPaths(User $user): array
+    public function typstPaths(Publisher $publisher): array
     {
         $disk = Storage::disk('local');
 
         return array_values(array_filter(
-            [$disk->path(self::SYSTEM_DIRECTORY), $disk->path($this->userDirectory($user))],
+            [$disk->path(self::SYSTEM_DIRECTORY), $disk->path($this->publisherDirectory($publisher))],
             is_dir(...),
         ));
     }
@@ -98,12 +98,12 @@ final class FontLibrary
      * Guarda y registra una variante de fuente. Si ya existe la misma familia,
      * peso y estilo para el mismo dueño, la reemplaza.
      */
-    public function register(string $sourcePath, string $originalName, ?User $owner = null, ?string $category = null, ?string $catalogFamily = null): Font
+    public function register(string $sourcePath, string $originalName, ?Publisher $owner = null, ?string $category = null, ?string $catalogFamily = null): Font
     {
         $face = $this->inspector->inspect($sourcePath);
         $family = $this->typstFamily($sourcePath, $face) ?? $face->family;
         $slug = Str::slug($family) ?: 'fuente';
-        $directory = $owner === null ? self::SYSTEM_DIRECTORY."/{$slug}" : $this->userDirectory($owner);
+        $directory = $owner === null ? self::SYSTEM_DIRECTORY."/{$slug}" : $this->publisherDirectory($owner);
         $path = "{$directory}/{$slug}-{$face->weight}".($face->italic ? 'i' : '').".{$face->extension}";
 
         $stream = fopen($sourcePath, 'r') ?: throw new InvalidFont('No se pudo leer el archivo.');
@@ -113,7 +113,7 @@ final class FontLibrary
         }
 
         $font = Font::query()
-            ->where('user_id', $owner?->id)
+            ->where('publisher_id', $owner?->id)
             ->where('family', $family)
             ->where('weight', $face->weight)
             ->where('italic', $face->italic)
@@ -133,7 +133,7 @@ final class FontLibrary
             'original_name' => $originalName,
             'sha256' => (string) hash_file('sha256', $sourcePath),
         ]);
-        $font->user_id = $owner?->id;
+        $font->publisher_id = $owner?->id;
         $font->save();
 
         return $font;
@@ -160,8 +160,8 @@ final class FontLibrary
         }
     }
 
-    public function userDirectory(User $user): string
+    public function publisherDirectory(Publisher $publisher): string
     {
-        return "fonts/usuarios/{$user->id}";
+        return "fonts/editoriales/{$publisher->id}";
     }
 }

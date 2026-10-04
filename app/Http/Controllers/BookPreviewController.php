@@ -61,7 +61,7 @@ class BookPreviewController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
-        $matcher = new FontMatcher($fonts->families($user));
+        $matcher = new FontMatcher($fonts->families($book->publisher));
         $boxes = (new TextBlockBuilder($matcher))->build($text['lines'], $text['width'], $text['height'], 'txt-'.$page.'-'.Str::lower(Str::random(4)));
 
         $substitutions = [];

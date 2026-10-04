@@ -34,7 +34,7 @@ class InstallFontCatalogCommand extends Command
             $styles = [];
 
             foreach (self::STYLES as [$italic, $weight]) {
-                $exists = Font::query()->whereNull('user_id')->where('catalog_family', $family)->where('weight', $weight)->where('italic', (bool) $italic)->exists();
+                $exists = Font::query()->whereNull('publisher_id')->where('catalog_family', $family)->where('weight', $weight)->where('italic', (bool) $italic)->exists();
 
                 if ($exists && ! $this->option('force')) {
                     $styles[] = $this->label($italic, $weight);

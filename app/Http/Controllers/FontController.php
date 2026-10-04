@@ -21,7 +21,7 @@ class FontController extends Controller
     public function index(FontLibrary $library, #[CurrentUser] User $user): Response
     {
         return Inertia::render('fonts/Index', [
-            'families' => $library->catalogFor($user),
+            'families' => $library->catalogFor($user->publisher()),
         ]);
     }
 
@@ -38,7 +38,7 @@ class FontController extends Controller
         $files = $request->file('files', []);
         foreach ($files as $file) {
             try {
-                $font = $library->register((string) $file->getRealPath(), $file->getClientOriginalName(), $user);
+                $font = $library->register((string) $file->getRealPath(), $file->getClientOriginalName(), $user->publisher());
                 $added[] = $font->family;
             } catch (InvalidFont $e) {
                 $errors[] = "{$file->getClientOriginalName()}: {$e->getMessage()}";
@@ -60,7 +60,7 @@ class FontController extends Controller
 
     public function destroy(Font $font, #[CurrentUser] User $user): RedirectResponse
     {
-        abort_unless($font->user_id === $user->id, 403);
+        abort_unless($font->publisher_id !== null && $font->publisher_id === $user->publisher()->id, 403);
 
         Storage::disk('local')->delete($font->path);
         $font->delete();
@@ -70,7 +70,7 @@ class FontController extends Controller
 
     public function file(Font $font, #[CurrentUser] User $user): BinaryFileResponse
     {
-        abort_unless($font->user_id === null || $font->user_id === $user->id, 403);
+        abort_unless($font->publisher_id === null || $font->publisher_id === $user->publisher()->id, 403);
 
         $path = Storage::disk('local')->path($font->path);
         abort_unless(is_file($path), 404);

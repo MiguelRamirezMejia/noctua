@@ -36,6 +36,7 @@ final readonly class CreateBookFromPdf
         $book->setSequence(PageSequence::fromSource($pageCount));
         $book->setFolioSettings(new FolioSettings);
         $book->user()->associate($user);
+        $book->publisher()->associate($user->publisher());
 
         return DB::transaction(function () use ($book, $pdf): Book {
             $book->save();

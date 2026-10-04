@@ -10,8 +10,19 @@ export type User = {
     [key: string]: unknown;
 };
 
+export type WorkspaceRole = 'owner' | 'editor';
+
+/** Espacio de trabajo: el personal de la cuenta o una editorial compartida. */
+export type Workspace = {
+    id: number;
+    name: string;
+    personal: boolean;
+};
+
 export type Auth = {
     user: User;
+    publisher: (Workspace & { role: WorkspaceRole | null }) | null;
+    publishers: Workspace[];
 };
 
 export type Passkey = {

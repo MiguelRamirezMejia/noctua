@@ -34,24 +34,24 @@ it('registra una fuente leyendo su familia, peso y estilo del archivo', function
     expect($font->family)->toBe('Nunito')
         ->and($font->weight)->toBe(400)
         ->and($font->italic)->toBeFalse()
-        ->and($font->user_id)->toBeNull()
+        ->and($font->publisher_id)->toBeNull()
         ->and(Storage::disk('local')->exists($font->path))->toBeTrue();
 });
 
-it('sube fuentes propias que solo ve su dueño', function () {
+it('sube fuentes propias que solo ve su espacio', function () {
     $this->actingAs($this->user)
         ->post(route('fonts.store'), ['files' => [fixtureFont()]])
         ->assertSessionHasNoErrors();
 
     $font = Font::query()->sole();
-    expect($font->user_id)->toBe($this->user->id);
+    expect($font->publisher_id)->toBe($this->user->current_publisher_id);
 
     $library = app(FontLibrary::class);
     $other = User::factory()->create();
 
-    expect($library->has($this->user, 'Nunito'))->toBeTrue()
-        ->and($library->has($other, 'Nunito'))->toBeFalse()
-        ->and($library->families($other))->toBe(FontLibrary::BUILTIN);
+    expect($library->has($this->user->publisher(), 'Nunito'))->toBeTrue()
+        ->and($library->has($other->publisher(), 'Nunito'))->toBeFalse()
+        ->and($library->families($other->publisher()))->toBe(FontLibrary::BUILTIN);
 
     $this->actingAs($this->user)->get(route('fonts.file', $font))->assertOk()->assertHeader('Content-Type', 'font/ttf');
     $this->actingAs($other)->get(route('fonts.file', $font))->assertForbidden();

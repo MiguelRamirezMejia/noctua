@@ -11,7 +11,6 @@ use App\Domain\Book\PageItem;
 use App\Domain\Book\PageSequence;
 use App\Fonts\FontLibrary;
 use App\Models\Book;
-use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Gate;
@@ -102,9 +101,7 @@ class BookContentRequest extends FormRequest
      */
     private function fonts(): array
     {
-        $user = $this->user();
-
-        return $user instanceof User ? app(FontLibrary::class)->families($user) : FontLibrary::BUILTIN;
+        return app(FontLibrary::class)->families($this->book()->publisher);
     }
 
     /**

@@ -181,7 +181,7 @@ it('imprime el libro editado con folios estampados', function () {
             ->where('imposition.original_name', "{$book->title}.pdf"));
 
     // Hoja de 1 pliego: frente 4|1, dorso 2|3 → en el libro compuesto: p4(sin nº) | p2(nº 1), p1(nº 2) | blanco.
-    $pdf = Storage::disk('local')->path("imposiciones/{$this->user->id}/{$id}/impuesto.pdf");
+    $pdf = Storage::disk('local')->path("imposiciones/editorial-{$this->user->current_publisher_id}/{$id}/impuesto.pdf");
     $front = Process::timeout(30)->run(['pdftotext', '-layout', '-f', '1', '-l', '1', $pdf, '-'])->output();
     $back = Process::timeout(30)->run(['pdftotext', '-layout', '-f', '2', '-l', '2', $pdf, '-'])->output();
 

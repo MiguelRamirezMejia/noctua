@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\Storage;
  * la edición (orden, blancos, folios) se guarda como datos.
  *
  * @property int $id
- * @property int $user_id
+ * @property int $publisher_id
+ * @property-read Publisher $publisher
+ * @property int $user_id Quien lo creó.
  * @property string $title
  * @property string $source_filename
  * @property int $source_page_count
@@ -48,6 +50,14 @@ class Book extends Model
             'folios' => 'array',
             'source_page_count' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Publisher, $this>
+     */
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(Publisher::class);
     }
 
     /**

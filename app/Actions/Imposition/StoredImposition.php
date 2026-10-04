@@ -7,12 +7,12 @@ use App\Domain\Printing\Offset;
 use App\Domain\Printing\PageFit;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
-use App\Models\User;
+use App\Models\Publisher;
 use Illuminate\Support\Facades\Storage;
 use JsonException;
 
 /**
- * Imposición guardada en el disco privado: imposiciones/{usuario}/{id}/.
+ * Imposición guardada en el disco privado: imposiciones/editorial-{id}/{id}/.
  * Provisional hasta que la fase 2 introduzca la tabla `builds`.
  */
 final readonly class StoredImposition
@@ -35,18 +35,18 @@ final readonly class StoredImposition
         public array $info,
     ) {}
 
-    public static function directoryFor(User $user, string $id): string
+    public static function directoryFor(Publisher $publisher, string $id): string
     {
-        return "imposiciones/{$user->id}/{$id}";
+        return "imposiciones/editorial-{$publisher->id}/{$id}";
     }
 
-    public static function find(User $user, string $id): ?self
+    public static function find(Publisher $publisher, string $id): ?self
     {
         if (! preg_match('/^[0-9a-z]{26}$/', $id)) {
             return null;
         }
 
-        $directory = self::directoryFor($user, $id);
+        $directory = self::directoryFor($publisher, $id);
         $json = Storage::disk('local')->get("{$directory}/".self::META);
 
         if ($json === null) {
@@ -65,13 +65,13 @@ final readonly class StoredImposition
     /**
      * @return list<self>
      */
-    public static function recent(User $user, int $limit = 10): array
+    public static function recent(Publisher $publisher, int $limit = 10): array
     {
-        $ids = array_map(basename(...), Storage::disk('local')->directories("imposiciones/{$user->id}"));
+        $ids = array_map(basename(...), Storage::disk('local')->directories("imposiciones/editorial-{$publisher->id}"));
         rsort($ids);
 
         return array_values(array_filter(array_map(
-            fn (string $id): ?self => self::find($user, $id),
+            fn (string $id): ?self => self::find($publisher, $id),
             array_slice($ids, 0, $limit),
         )));
     }

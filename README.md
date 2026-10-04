@@ -4,13 +4,14 @@ Composición e impresión de libros cosidos a mano por cuadernillos: del manuscr
 
 ## Requisitos (Windows, nativo)
 
-| Herramienta | Versión | Instalación                                                                                                       |
-| ----------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
-| PHP         | 8.4     | `winget install PHP.PHP.8.4` (extensiones: curl, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, zip) |
-| Composer    | 2.x     |                                                                                                                   |
-| Node        | 22      |                                                                                                                   |
-| Typst       | 0.15.1  | `winget install Typst.Typst`                                                                                      |
-| Poppler     | 25.x    | `winget install oschwartz10612.Poppler` (tests de PDF y regresión visual)                                         |
+| Herramienta | Versión | Instalación                                                                                                                                 |
+| ----------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| PHP         | 8.4     | `winget install PHP.PHP.8.4` (extensiones: curl, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, zip)                           |
+| Composer    | 2.x     |                                                                                                                                             |
+| Node        | 22      |                                                                                                                                             |
+| Typst       | 0.15.1  | `winget install Typst.Typst`                                                                                                                |
+| Poppler     | 25.x    | `winget install oschwartz10612.Poppler` (tests de PDF y regresión visual)                                                                   |
+| Ghostscript | 10.x    | Instalador oficial de Artifex (github.com/ArtifexSoftware/ghostpdl-downloads); quita el texto original de las páginas para hacerlo editable |
 
 En local la cola usa el driver `database`; Horizon y Redis quedan para producción.
 
@@ -23,9 +24,11 @@ composer dev
 
 En **Libros** se sube el PDF (Canva, Word, InDesign…) y se edita sin tocar el original: reordenar (arrastrando o con botones), quitar y devolver páginas, duplicar, insertar blancos y numerar páginas (desde qué página, con qué número, posición, tipo de letra, tamaño y margen; se puede quitar el número de páginas concretas). Al imprimir, Noctua compone el libro con Typst (folios) y FPDI y lo impone por cuadernillos. Las páginas más grandes que media carta se ajustan sin recortes.
 
-En Windows, fija en el `.env` las rutas absolutas de `NOCTUA_TYPST` y `NOCTUA_PDFTOPPM`.
+En Windows, fija en el `.env` las rutas absolutas de `NOCTUA_TYPST`, `NOCTUA_PDFTOPPM`, `NOCTUA_PDFTOTEXT`, `NOCTUA_PDFTOHTML` y `NOCTUA_GHOSTSCRIPT`.
 
 **Editor de pliego** (botón «Editar» o doble clic sobre un pliego): las dos páginas en grande para añadir cuadros de texto (fuente, tamaño, color, alineación y palabras sueltas en negrita, cursiva o de otro color), rectángulos y fondos de color por página (detrás de la página o teñida). «Vista exacta» muestra el pliego compuesto tal como se imprimirá.
+
+**Texto editable**: en el editor de pliego, «Hacer editable el texto» convierte el texto original de la página en cuadros editables (posición, tamaño, alineación, negritas y colores detectados) y usa la página sin su texto, generada con Ghostscript; las ilustraciones no se tocan. Si la fuente original no está disponible se usa la más parecida; subiéndola en Fuentes se usa la original.
 
 **Fuentes**: `php artisan noctua:fonts:install` descarga el catálogo de fuentes libres (44 familias, también lo hace `composer setup`). Cada usuario puede subir sus propias fuentes TTF/OTF desde la sección Fuentes.
 

@@ -15,6 +15,8 @@ final readonly class PageDesign
     public function __construct(
         public ?PageBackground $background = null,
         public array $elements = [],
+        /** Usar la página de origen sin su texto (el texto pasa a cuadros editables). */
+        public bool $hideSourceText = false,
     ) {
         if (count($elements) > self::MAX_ELEMENTS) {
             throw new InvalidPageDesign('Demasiados elementos en una página (máximo '.self::MAX_ELEMENTS.').');
@@ -31,7 +33,7 @@ final readonly class PageDesign
 
     public function isEmpty(): bool
     {
-        return $this->background === null && $this->elements === [];
+        return $this->background === null && $this->elements === [] && ! $this->hideSourceText;
     }
 
     /**
@@ -43,7 +45,7 @@ final readonly class PageDesign
     }
 
     /**
-     * @return array{background: array{color: string, mode: string}|null, elements: list<array<string, mixed>>}
+     * @return array{background: array{color: string, mode: string}|null, elements: list<array<string, mixed>>, hide_source_text: bool}
      */
     public function toArray(): array
     {
@@ -53,6 +55,7 @@ final readonly class PageDesign
                 'mode' => $this->background->mode->value,
             ],
             'elements' => array_map(fn (Element $e): array => $e->toArray(), $this->elements),
+            'hide_source_text' => $this->hideSourceText,
         ];
     }
 
@@ -87,7 +90,7 @@ final readonly class PageDesign
             $elements[] = self::element($element);
         }
 
-        return new self($background, $elements);
+        return new self($background, $elements, ($data['hide_source_text'] ?? false) === true);
     }
 
     /**

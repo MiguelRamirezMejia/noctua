@@ -16,8 +16,9 @@ final class PdfComposer
 {
     /**
      * @param  list<int>|null  $only  Posiciones del libro a incluir (p. ej. un pliego para la vista previa).
+     * @param  array<int, string>  $textless  Página de origen => PDF de esa página sin su texto.
      */
-    public function compose(string $sourcePath, PageSequence $sequence, string $outputPath, ?string $overPath = null, ?string $underPath = null, ?array $only = null): void
+    public function compose(string $sourcePath, PageSequence $sequence, string $outputPath, ?string $overPath = null, ?string $underPath = null, ?array $only = null, array $textless = []): void
     {
         $page = $this->pageSize($sourcePath);
         $pdf = new DeterministicFpdi($page);
@@ -28,6 +29,17 @@ final class PdfComposer
             foreach ($sequence->items as $index => $item) {
                 if ($item->sourcePage !== null && ($only === null || in_array($index + 1, $only, true))) {
                     $templates[$item->sourcePage] ??= $pdf->importPage($item->sourcePage);
+                }
+            }
+
+            $withoutText = [];
+            foreach ($sequence->items as $index => $item) {
+                $source = $item->sourcePage;
+                if ($source !== null && $item->design->hideSourceText && isset($textless[$source]) && ($only === null || in_array($index + 1, $only, true))) {
+                    if (! isset($withoutText[$source])) {
+                        $pdf->setSourceFile($textless[$source]);
+                        $withoutText[$source] = $pdf->importPage(1);
+                    }
                 }
             }
 
@@ -47,7 +59,10 @@ final class PdfComposer
                 }
 
                 if ($item->sourcePage !== null) {
-                    $pdf->useTemplate($templates[$item->sourcePage], 0, 0, $page->widthMm, $page->heightMm);
+                    $template = $item->design->hideSourceText && isset($withoutText[$item->sourcePage])
+                        ? $withoutText[$item->sourcePage]
+                        : $templates[$item->sourcePage];
+                    $pdf->useTemplate($template, 0, 0, $page->widthMm, $page->heightMm);
                 }
 
                 $background = $item->design->background;

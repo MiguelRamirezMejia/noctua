@@ -15,6 +15,9 @@ return [
     'binaries' => [
         'typst' => env('NOCTUA_TYPST', 'typst'),
         'pdftoppm' => env('NOCTUA_PDFTOPPM', 'pdftoppm'),
+        'pdftotext' => env('NOCTUA_PDFTOTEXT', 'pdftotext'),
+        'pdftohtml' => env('NOCTUA_PDFTOHTML', 'pdftohtml'),
+        'ghostscript' => env('NOCTUA_GHOSTSCRIPT', 'gs'),
     ],
 
     'process_timeout' => (int) env('NOCTUA_PROCESS_TIMEOUT', 120),

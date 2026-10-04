@@ -97,7 +97,7 @@ it('crea un libro desde un PDF con sus miniaturas y lo abre en el editor', funct
     $this->get(route('books.edit', $book))
         ->assertInertia(fn (Assert $page) => $page
             ->component('books/Edit')
-            ->where('book.pages.0', ['id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => null, 'elements' => []]])
+            ->where('book.pages.0', ['id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => null, 'elements' => [], 'hide_source_text' => false]])
             ->where('previewScale', fn ($scale) => $scale < 1));
 
     $this->get(route('books.thumbnail', [$book, 1]))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
@@ -273,6 +273,47 @@ it('compone la vista exacta de un pliego con cambios sin guardar', function () {
 
     $this->postJson(route('books.preview', $book), [...$pages, 'positions' => [9]])->assertUnprocessable();
 })->skip(fn () => ! binaryAvailable('pdftoppm') || ! binaryAvailable('typst'), 'Requiere Typst y Poppler.');
+
+it('convierte el texto original de una página en cuadros editables', function () {
+    $book = uploadBook($this->user, 2);
+
+    $response = $this->postJson(route('books.editable-text', [$book, 1]))->assertOk();
+    $texts = array_map(
+        fn (array $e): string => implode('', array_column($e['spans'], 'text')),
+        $response->json('elements'),
+    );
+
+    expect($texts)->toContain('CABEZA')
+        ->and($texts)->toContain('Página 1')
+        ->and($response->json('substitutions.0'))->toBe(['original' => 'Helvetica', 'used' => 'Nunito'])
+        ->and(is_file($book->textlessPagePath(1)))->toBeTrue();
+
+    $this->get(route('books.page-image', [$book, 1, 'sin_texto' => 1]))->assertOk()->assertHeader('Content-Type', 'image/jpeg');
+    $this->actingAs(User::factory()->create())->postJson(route('books.editable-text', [$book, 1]))->assertForbidden();
+})->skip(fn () => ! binaryAvailable('ghostscript') || ! binaryAvailable('pdftotext') || ! binaryAvailable('pdftohtml'), 'Requiere Ghostscript y Poppler.');
+
+it('imprime la página sin su texto original y con el texto editado', function () {
+    $book = uploadBook($this->user, 2);
+    $elements = $this->postJson(route('books.editable-text', [$book, 1]))->json('elements');
+    $elements[0]['spans'] = [['text' => 'Texto corregido', 'bold' => false, 'italic' => false, 'color' => null]];
+
+    $this->put(route('books.update', $book), editPayload($book, [
+        ['id' => 'p1', 'source' => 1, 'folio' => true, 'design' => ['background' => null, 'elements' => $elements, 'hide_source_text' => true]],
+        ['id' => 'p2', 'source' => 2, 'folio' => true],
+    ]))->assertSessionHasNoErrors();
+
+    $composed = tempnam(sys_get_temp_dir(), 'noctua-editable-');
+    app(PrintBook::class)->compose($this->user, $book->refresh(), new PrinterProfile, new PrintOptions, $composed);
+    $page1 = preg_replace('/\s+/', ' ', Process::timeout(30)->run(['pdftotext', '-f', '1', '-l', '1', $composed, '-'])->output());
+    $page2 = preg_replace('/\s+/', ' ', Process::timeout(30)->run(['pdftotext', '-f', '2', '-l', '2', $composed, '-'])->output());
+
+    // Página 1: el texto original desaparece y queda el de los cuadros (con la corrección).
+    expect(substr_count($page1, 'CABEZA'))->toBe(0)
+        ->and($page1)->toContain('Texto corregido')
+        ->and($page1)->toContain('Página 1')
+        // Página 2: sin cambios, conserva su texto original.
+        ->and($page2)->toContain('CABEZA');
+})->skip(fn () => ! binaryAvailable('ghostscript') || ! binaryAvailable('typst') || (new ExecutableFinder)->find('pdftotext') === null, 'Requiere Ghostscript, Typst y Poppler.');
 
 it('rechaza textos con fuentes no disponibles', function () {
     $book = Book::factory()->for($this->user)->create();

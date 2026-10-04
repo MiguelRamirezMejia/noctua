@@ -29,6 +29,7 @@ import {
     destroy,
     edit,
     index,
+    editableText,
     pageImage,
     preview,
     update,
@@ -82,6 +83,15 @@ onMounted(() => loadFontFaces(props.fonts));
 const thumbnailUrl = (source: number | null): string | null =>
     source === null ? null : props.thumbnailBase.replace(/\/0$/, `/${source}`);
 
+/** Si el texto original se reemplazó por cuadros editables, la miniatura va sin él. */
+function pageThumbnail(page: BookPage): string | null {
+    if (page.source !== null && page.design.hide_source_text) {
+        return `${pageImageBase.replace(/\/0\/imagen$/, `/${page.source}/imagen`)}?sin_texto=1`;
+    }
+
+    return thumbnailUrl(page.source);
+}
+
 // --- Pliegos: la página 1 va sola a la derecha, luego pares izquierda|derecha ---
 const spreads = computed(() => {
     const result: { left: number | null; right: number | null }[] = [
@@ -119,7 +129,11 @@ const folioTexts = computed(() => {
 });
 
 // --- Edición de páginas ---
-const emptyDesign = (): PageDesign => ({ background: null, elements: [] });
+const emptyDesign = (): PageDesign => ({
+    background: null,
+    elements: [],
+    hide_source_text: false,
+});
 
 const uid = (prefix: string) =>
     `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -221,6 +235,7 @@ function dropOn(index: number) {
 const openSpread = ref<number | null>(null);
 const pageImageBase = pageImage({ book: props.book.id, page: 0 }).url;
 const previewUrl = preview(props.book.id).url;
+const editableTextBase = editableText({ book: props.book.id, page: 0 }).url;
 
 function save() {
     form.put(update(props.book.id).url, { preserveScroll: true });
@@ -326,9 +341,7 @@ const offsetFields = [
                                 :page="form.pages[i]"
                                 :position="i + 1"
                                 :total="form.pages.length"
-                                :thumbnail-url="
-                                    thumbnailUrl(form.pages[i].source)
-                                "
+                                :thumbnail-url="pageThumbnail(form.pages[i])"
                                 :folio-text="folioTexts[i]"
                                 :folios="form.folios"
                                 :width-mm="book.width_mm"
@@ -722,6 +735,7 @@ const offsetFields = [
         :fonts="fonts"
         :print-scale="previewScale"
         :page-image-base="pageImageBase"
+        :editable-text-base="editableTextBase"
         :preview-url="previewUrl"
         :dirty="form.isDirty"
         :saving="form.processing"

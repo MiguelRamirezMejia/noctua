@@ -73,9 +73,14 @@ class Book extends Model
         return Storage::disk('local')->path($this->directory()."/miniaturas/{$page}.jpg");
     }
 
-    public function pageImagePath(int $page): string
+    public function pageImagePath(int $page, bool $textless = false): string
     {
-        return Storage::disk('local')->path($this->directory()."/paginas/{$page}.jpg");
+        return Storage::disk('local')->path($this->directory()."/paginas/{$page}".($textless ? '-sin-texto' : '').'.jpg');
+    }
+
+    public function textlessPagePath(int $page): string
+    {
+        return Storage::disk('local')->path($this->directory()."/sin-texto/{$page}.pdf");
     }
 
     public function pageSize(): Size

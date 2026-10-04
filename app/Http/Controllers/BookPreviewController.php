@@ -2,19 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Book\ExtractPageText;
 use App\Actions\Book\PrintBook;
 use App\Actions\Book\RenderPageImage;
+use App\Actions\Book\TextlessPage;
+use App\Domain\Book\Design\TextBox;
+use App\Domain\Book\Extraction\FontMatcher;
+use App\Domain\Book\Extraction\TextBlockBuilder;
 use App\Domain\Printing\PageFit;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
 use App\Domain\Typesetting\TypesettingFailed;
+use App\Fonts\FontLibrary;
 use App\Http\Requests\BookContentRequest;
 use App\Models\Book;
 use App\Models\User;
 use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\Process\Process;
 
@@ -25,14 +34,51 @@ class BookPreviewController extends Controller
     /**
      * Imagen de una página del PDF de origen para el editor de pliegos.
      */
-    public function pageImage(Book $book, int $page, RenderPageImage $render): BinaryFileResponse
+    public function pageImage(Request $request, Book $book, int $page, RenderPageImage $render): BinaryFileResponse
     {
         Gate::authorize('view', $book);
         abort_unless($page >= 1 && $page <= $book->source_page_count, 404);
 
-        return response()->file($render->handle($book, $page), [
+        return response()->file($render->handle($book, $page, $request->boolean('sin_texto')), [
             'Content-Type' => 'image/jpeg',
             'Cache-Control' => 'private, max-age=86400',
+        ]);
+    }
+
+    /**
+     * Convierte el texto original de una página en cuadros editables. No guarda:
+     * el editor añade los cuadros a la página y marca que se use sin su texto.
+     */
+    public function editableText(Book $book, int $page, ExtractPageText $extract, TextlessPage $textless, FontLibrary $fonts, #[CurrentUser] User $user): JsonResponse
+    {
+        Gate::authorize('update', $book);
+        abort_unless($page >= 1 && $page <= $book->source_page_count, 404);
+
+        try {
+            $text = $extract->handle($book, $page);
+            $textless->handle($book, $page);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $matcher = new FontMatcher($fonts->families($user));
+        $boxes = (new TextBlockBuilder($matcher))->build($text['lines'], $text['width'], $text['height'], 'txt-'.$page.'-'.Str::lower(Str::random(4)));
+
+        $substitutions = [];
+        foreach ($text['lines'] as $line) {
+            $match = $matcher->match($line->family);
+            if ($line->family !== null && ! $match->exact) {
+                $substitutions[$line->family] = $match->family;
+            }
+        }
+
+        return response()->json([
+            'elements' => array_map(fn (TextBox $box): array => $box->toArray(), $boxes),
+            'substitutions' => array_map(
+                fn (string $original, string $used): array => ['original' => $original, 'used' => $used],
+                array_keys($substitutions),
+                array_values($substitutions),
+            ),
         ]);
     }
 
@@ -102,6 +148,6 @@ class BookPreviewController extends Controller
             }
         }
 
-        throw new \RuntimeException("No se generó la página {$page} de la vista previa.");
+        throw new RuntimeException("No se generó la página {$page} de la vista previa.");
     }
 }

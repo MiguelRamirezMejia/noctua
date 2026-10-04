@@ -22,6 +22,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('libros/{book}/imprimir', [BookController::class, 'print'])->name('books.print');
     Route::get('libros/{book}/paginas/{page}/imagen', [BookPreviewController::class, 'pageImage'])->whereNumber('page')->name('books.page-image');
     Route::post('libros/{book}/vista-previa', [BookPreviewController::class, 'preview'])->name('books.preview');
+    Route::post('libros/{book}/paginas/{page}/texto-editable', [BookPreviewController::class, 'editableText'])->whereNumber('page')->name('books.editable-text');
 
     Route::get('fuentes', [FontController::class, 'index'])->name('fonts.index');
     Route::post('fuentes', [FontController::class, 'store'])->name('fonts.store');

@@ -14,8 +14,10 @@ import {
     Eye,
     Italic,
     Redo2,
+    RotateCcw,
     Save,
     Square,
+    TextCursorInput,
     Trash2,
     Type,
     Undo2,
@@ -57,6 +59,7 @@ const props = defineProps<{
     fonts: FontFamilyInfo[];
     printScale: number;
     pageImageBase: string;
+    editableTextBase: string;
     previewUrl: string;
     dirty: boolean;
     saving: boolean;
@@ -476,7 +479,92 @@ onBeforeUnmount(() => {
 const imageUrl = (page: BookPage) =>
     page.source === null
         ? null
-        : props.pageImageBase.replace(/\/0\/imagen$/, `/${page.source}/imagen`);
+        : props.pageImageBase.replace(
+              /\/0\/imagen$/,
+              `/${page.source}/imagen`,
+          ) + (page.design.hide_source_text ? '?sin_texto=1' : '');
+
+// --- Texto original editable ---
+const extracting = ref(false);
+const extractMessage = ref<string | null>(null);
+const EXTRACTED_PREFIX = 'txt-';
+
+async function makeTextEditable() {
+    const page = activePage.value;
+
+    if (!page || page.source === null) {
+        return;
+    }
+
+    extracting.value = true;
+    extractMessage.value = null;
+
+    try {
+        const response = await fetch(
+            props.editableTextBase.replace(
+                /\/0\/texto-editable$/,
+                `/${page.source}/texto-editable`,
+            ),
+            {
+                method: 'POST',
+                headers: {
+                    Accept: 'application/json',
+                    'X-XSRF-TOKEN': xsrfToken(),
+                },
+            },
+        );
+        const body = (await response.json()) as {
+            elements?: PageElement[];
+            substitutions?: { original: string; used: string }[];
+            message?: string;
+        };
+
+        if (!response.ok) {
+            throw new Error(body.message ?? 'No se pudo extraer el texto.');
+        }
+
+        const elements = body.elements ?? [];
+        page.design.elements.push(...elements);
+        page.design.hide_source_text = true;
+        selectedId.value = null;
+
+        const subs = (body.substitutions ?? [])
+            .map((s) => `${s.original} → ${s.used}`)
+            .join(', ');
+        extractMessage.value =
+            elements.length === 0
+                ? 'Esta página no tiene texto que se pueda extraer (puede ser parte de una imagen).'
+                : `${elements.length} cuadro(s) de texto creados.` +
+                  (subs
+                      ? ` Fuentes sustituidas: ${subs}. Sube la fuente original en «Fuentes» para usarla.`
+                      : '');
+    } catch (error) {
+        extractMessage.value =
+            error instanceof Error ? error.message : 'Error desconocido.';
+    } finally {
+        extracting.value = false;
+    }
+}
+
+function restoreOriginalText() {
+    const page = activePage.value;
+
+    if (
+        !page ||
+        !window.confirm(
+            'Se quitarán los cuadros creados a partir del texto original y la página volverá a mostrar su texto. ¿Continuar?',
+        )
+    ) {
+        return;
+    }
+
+    page.design.elements = page.design.elements.filter(
+        (e) => !e.id.startsWith(EXTRACTED_PREFIX),
+    );
+    page.design.hide_source_text = false;
+    selectedId.value = null;
+    extractMessage.value = null;
+}
 
 // --- Vista exacta: el pliego compuesto por el servidor, tal como se imprimirá ---
 const exact = ref(false);
@@ -1021,6 +1109,51 @@ watch(
                                 Lo blanco toma este color y lo oscuro se
                                 mantiene. Funciona mejor con colores claros.
                             </template>
+                        </p>
+                    </div>
+                    <div
+                        v-if="activePage.source !== null"
+                        class="grid gap-2 border-t pt-4"
+                    >
+                        <span>Texto original del PDF</span>
+                        <template v-if="!activePage.design.hide_source_text">
+                            <p class="text-xs text-muted-foreground">
+                                Convierte el texto de esta página en cuadros que
+                                puedes cambiar: palabras, tipo de letra, tamaño
+                                y color. Las ilustraciones no se tocan.
+                            </p>
+                            <Button
+                                size="sm"
+                                :disabled="extracting"
+                                @click="makeTextEditable"
+                            >
+                                <TextCursorInput />
+                                {{
+                                    extracting
+                                        ? 'Preparando…'
+                                        : 'Hacer editable el texto'
+                                }}
+                            </Button>
+                        </template>
+                        <template v-else>
+                            <p class="text-xs text-muted-foreground">
+                                El texto original está oculto y ahora es
+                                editable en los cuadros de la página.
+                            </p>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                @click="restoreOriginalText"
+                            >
+                                <RotateCcw /> Volver al texto original
+                            </Button>
+                        </template>
+                        <p
+                            v-if="extractMessage"
+                            class="rounded-md bg-muted p-2 text-xs"
+                            role="status"
+                        >
+                            {{ extractMessage }}
                         </p>
                     </div>
                     <p class="text-xs text-muted-foreground">

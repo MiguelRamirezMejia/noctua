@@ -15,13 +15,18 @@ final readonly class RenderPageImage
     public const int DPI = 110;
 
     public function __construct(
+        private TextlessPage $textless,
         private string $pdftoppm = 'pdftoppm',
         private int $timeoutSeconds = 120,
     ) {}
 
-    public function handle(Book $book, int $page): string
+    /**
+     * @param  bool  $textless  Versión de la página sin su texto original.
+     */
+    public function handle(Book $book, int $page, bool $textless = false): string
     {
-        $path = $book->pageImagePath($page);
+        $path = $book->pageImagePath($page, $textless);
+        [$pdf, $pdfPage] = $textless ? [$this->textless->handle($book, $page), 1] : [$book->sourcePath(), $page];
 
         if (is_file($path)) {
             return $path;
@@ -33,8 +38,8 @@ final readonly class RenderPageImage
         }
 
         $process = new Process([
-            $this->pdftoppm, '-r', (string) self::DPI, '-f', (string) $page, '-l', (string) $page,
-            '-jpeg', '-jpegopt', 'quality=85', '-singlefile', $book->sourcePath(), substr($path, 0, -4),
+            $this->pdftoppm, '-r', (string) self::DPI, '-f', (string) $pdfPage, '-l', (string) $pdfPage,
+            '-jpeg', '-jpegopt', 'quality=85', '-singlefile', $pdf, substr($path, 0, -4),
         ], timeout: $this->timeoutSeconds);
         $process->run();
 

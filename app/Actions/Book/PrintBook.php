@@ -26,6 +26,7 @@ final readonly class PrintBook
         private PdfComposer $composer,
         private PageLayers $layers,
         private FontLibrary $fonts,
+        private TextlessPage $textless,
         private ImposeUploadedPdf $impose,
     ) {}
 
@@ -73,7 +74,14 @@ final readonly class PrintBook
                 $this->layers->render('encima', $sequence, $folios, $page, $scale, $fontPaths, $over);
             }
 
-            $this->composer->compose($book->sourcePath(), $sequence, $outputPath, $over, $under, $only);
+            $textless = [];
+            foreach ($sequence->items as $index => $item) {
+                if ($item->sourcePage !== null && $item->design->hideSourceText && ($only === null || in_array($index + 1, $only, true))) {
+                    $textless[$item->sourcePage] ??= $this->textless->handle($book, $item->sourcePage);
+                }
+            }
+
+            $this->composer->compose($book->sourcePath(), $sequence, $outputPath, $over, $under, $only, $textless);
         } finally {
             foreach ([$under, $over] as $file) {
                 if ($file !== null && is_file($file)) {

@@ -57,6 +57,8 @@ export type PageBackground = {
 export type PageDesign = {
     background: PageBackground | null;
     elements: PageElement[];
+    /** La página se usa sin su texto original (convertido en cuadros editables). */
+    hide_source_text: boolean;
 };
 
 export type FolioPosition = 'bottom-center' | 'bottom-outer' | 'top-outer';

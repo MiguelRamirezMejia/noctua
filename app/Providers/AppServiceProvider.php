@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Actions\Book\ExtractPageText;
 use App\Actions\Book\RenderPageImage;
 use App\Actions\Book\RenderThumbnails;
+use App\Actions\Book\TextlessPage;
 use App\Domain\Typesetting\Typst\PageLayers;
 use App\Domain\Typesetting\Typst\TypstRunner;
 use Carbon\CarbonImmutable;
@@ -30,7 +32,19 @@ class AppServiceProvider extends ServiceProvider
             resource_path('typst/capas.typ'),
         ));
 
-        $this->app->singleton(RenderPageImage::class, fn (): RenderPageImage => new RenderPageImage(
+        $this->app->singleton(TextlessPage::class, fn (): TextlessPage => new TextlessPage(
+            config()->string('noctua.binaries.ghostscript'),
+            config()->integer('noctua.process_timeout'),
+        ));
+
+        $this->app->singleton(ExtractPageText::class, fn (): ExtractPageText => new ExtractPageText(
+            config()->string('noctua.binaries.pdftotext'),
+            config()->string('noctua.binaries.pdftohtml'),
+            config()->integer('noctua.process_timeout'),
+        ));
+
+        $this->app->singleton(RenderPageImage::class, fn (Application $app): RenderPageImage => new RenderPageImage(
+            $app->make(TextlessPage::class),
             config()->string('noctua.binaries.pdftoppm'),
             config()->integer('noctua.process_timeout'),
         ));

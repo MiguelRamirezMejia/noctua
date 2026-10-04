@@ -57,8 +57,13 @@ npm run check        # lint y formato del frontend
 npm run types:check  # vue-tsc
 ```
 
-## Arquitectura
+## Documentación
 
-- `app/Domain/Imposition`: orden de páginas por hoja y cuadernillo. PHP puro, sin dependencias.
-- `app/Domain/Printing`: geometría de la hoja, perfil de impresora y generación del PDF con FPDI/FPDF (salida determinista).
-- `docs/spike-0.md`: hallazgos del spike de Typst y FPDI.
+La documentación completa está en [`docs/`](docs/README.md):
+
+- [Qué es Noctua](docs/NOCTUA.md)
+- [Arquitectura](docs/arquitectura.md): capas, patrones, modelo de datos, multiespacio y flujos
+- [Backend](docs/backend.md) y [frontend](docs/frontend.md), archivo por archivo
+- [Calidad](docs/calidad.md): tests, CI y convenciones
+- [Operación](docs/operacion.md): instalación, configuración y solución de problemas
+- [Fase 0](docs/spike-0.md): mediciones de Typst y FPDI

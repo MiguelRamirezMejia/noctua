@@ -64,8 +64,13 @@ final class PdfComposer
                     $template = $item->design->hideSourceText && isset($withoutText[$item->sourcePage])
                         ? $withoutText[$item->sourcePage]
                         : $templates[$item->sourcePage];
-                    $frame = $frames[$position] ?? new ContentFrame(1.0, 0.0, 0.0);
-                    $pdf->useTemplate($template, $frame->xMm, $frame->yMm, $page->widthMm * $frame->scale, $page->heightMm * $frame->scale);
+                    // Se encaja según la página original: la versión sin texto mide lo mismo.
+                    [$x, $y, $width, $height] = self::fitInto(
+                        $this->templateSize($pdf, $templates[$item->sourcePage]),
+                        $page,
+                        $frames[$position] ?? new ContentFrame(1.0, 0.0, 0.0),
+                    );
+                    $pdf->useTemplate($template, $x, $y, $width, $height);
                 }
 
                 $background = $item->design->background;
@@ -103,22 +108,73 @@ final class PdfComposer
         return $templates;
     }
 
+    /**
+     * Tamaño de página del libro: el más frecuente entre sus páginas. La
+     * primera no sirve siempre: muchos PDF empiezan con una portada o una
+     * miniatura de otro tamaño.
+     */
     public function pageSize(string $sourcePath): Size
     {
         $pdf = new DeterministicFpdi(Size::letterLandscape());
+        $counts = [];
+        $sizes = [];
 
         try {
-            $pdf->setSourceFile($sourcePath);
-            $size = $pdf->getTemplateSize($pdf->importPage(1));
+            $pages = $pdf->setSourceFile($sourcePath);
+            for ($p = 1; $p <= $pages; $p++) {
+                $size = $this->templateSize($pdf, $pdf->importPage($p));
+                $key = sprintf('%.0fx%.0f', $size->widthMm * 2, $size->heightMm * 2);
+                $sizes[$key] ??= $size;
+                $counts[$key] = ($counts[$key] ?? 0) + 1;
+            }
         } finally {
             $pdf->cleanUp();
         }
+
+        if ($counts === []) {
+            throw new PageDoesNotFit('No se pudo leer el tamaño de página del PDF.');
+        }
+
+        // arsort conserva el orden de aparición en los empates: gana el primero.
+        arsort($counts);
+
+        return $sizes[array_key_first($counts)];
+    }
+
+    private function templateSize(DeterministicFpdi $pdf, string $template): Size
+    {
+        $size = $pdf->getTemplateSize($template);
 
         if (! is_array($size) || ! is_numeric($size['width'] ?? null) || ! is_numeric($size['height'] ?? null)) {
             throw new PageDoesNotFit('No se pudo leer el tamaño de página del PDF.');
         }
 
         return new Size((float) $size['width'], (float) $size['height']);
+    }
+
+    /**
+     * Encaja una página de origen en la del libro sin deformarla: si su
+     * tamaño es otro, se escala para caber y se centra.
+     *
+     * @return array{float, float, float, float} x, y, ancho y alto en mm
+     */
+    public static function fitInto(Size $source, Size $page, ContentFrame $frame): array
+    {
+        $width = $page->widthMm * $frame->scale;
+        $height = $page->heightMm * $frame->scale;
+
+        if ($source->equals($page)) {
+            return [$frame->xMm, $frame->yMm, $width, $height];
+        }
+
+        $scale = min($width / $source->widthMm, $height / $source->heightMm);
+
+        return [
+            $frame->xMm + ($width - $source->widthMm * $scale) / 2,
+            $frame->yMm + ($height - $source->heightMm * $scale) / 2,
+            $source->widthMm * $scale,
+            $source->heightMm * $scale,
+        ];
     }
 
     public function pageCount(string $sourcePath): int

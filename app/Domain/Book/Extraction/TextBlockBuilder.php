@@ -182,6 +182,19 @@ final readonly class TextBlockBuilder
             }
         }
 
+        // Párrafo de libro: primera línea con sangría y el resto a la izquierda.
+        // Sin esto, un párrafo corto de dos líneas que acaban en el margen
+        // derecho parecería alineado a la derecha.
+        $leftsButFirst = array_map(fn (TextLine $l): float => $l->xMin, array_slice($block, 1));
+        if ($leftsButFirst !== [] && self::spread($leftsButFirst) <= $t) {
+            $indent = $block[0]->xMin - min($leftsButFirst);
+            $rightsButLast = array_map(fn (TextLine $l): float => $l->xMax, array_slice($block, 0, -1));
+
+            if ($indent > $t && $indent < 0.2 * ($block[0]->xMax - $block[0]->xMin) && $rightsButLast !== []) {
+                return self::spread($rightsButLast) <= $t ? TextAlign::Justify : TextAlign::Left;
+            }
+        }
+
         return match (true) {
             $centers <= $t && $lefts > $t => TextAlign::Center,
             $rights <= $t && $lefts > $t => TextAlign::Right,

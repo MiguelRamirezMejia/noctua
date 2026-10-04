@@ -230,7 +230,7 @@ function updateSpans(el: TextElement, spans: TextSpan[]) {
             <img
                 :src="imageUrl"
                 alt=""
-                class="size-full select-none"
+                class="size-full object-contain select-none"
                 draggable="false"
             />
         </div>

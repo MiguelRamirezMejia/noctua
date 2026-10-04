@@ -356,6 +356,30 @@ it('borra de la imagen el texto de una página escaneada', function () {
     unlink("{$prefix}.png");
 })->skip(fn () => ! binaryAvailable('ghostscript') || ! binaryAvailable('pdftotext') || ! binaryAvailable('pdftohtml') || ! binaryAvailable('pdftoppm'), 'Requiere Ghostscript y Poppler.');
 
+it('toma el tamaño de página más frecuente y encaja ahí el texto editable de cada página', function () {
+    // Como muchos escaneos: la primera página es una miniatura de la portada.
+    $pdf = new FPDF('P', 'mm', [19, 32]);
+    $pdf->AddPage('P', [19, 32]);
+    foreach ([1, 2, 3] as $n) {
+        $pdf->AddPage('P', [148, 210]);
+        $pdf->SetFont('Helvetica', '', 12);
+        $pdf->Text(20, 40, "Texto de la pagina {$n}");
+    }
+    $path = tempnam(sys_get_temp_dir(), 'noctua-book-');
+    $pdf->Output('F', $path);
+
+    $this->actingAs($this->user)->post(route('books.store'), ['pdf' => new UploadedFile($path, 'Mixto.pdf', 'application/pdf', test: true)])->assertSessionHasNoErrors();
+    $book = Book::query()->latest('id')->firstOrFail();
+
+    expect((float) $book->source_width_mm)->toBe(148.0)
+        ->and((float) $book->source_height_mm)->toBe(210.0);
+
+    $box = $this->postJson(route('books.editable-text', [$book, 2]))->assertOk()->json('elements.0');
+    expect($box['x'])->toBeGreaterThan(19.0)->toBeLessThan(21.0)
+        ->and($box['x'] + $box['width'])->toBeLessThanOrEqual(148.0)
+        ->and($box['size_pt'])->toEqual(12);
+})->skip(fn () => ! binaryAvailable('ghostscript') || ! binaryAvailable('pdftotext') || ! binaryAvailable('pdftohtml') || ! binaryAvailable('pdftoppm'), 'Requiere Ghostscript y Poppler.');
+
 it('imprime la página sin su texto original y con el texto editado', function () {
     $book = uploadBook($this->user, 2);
     $elements = $this->postJson(route('books.editable-text', [$book, 1]))->json('elements');

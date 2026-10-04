@@ -6,12 +6,16 @@ use App\Actions\Book\ExtractPageText;
 use App\Actions\Book\PrintBook;
 use App\Actions\Book\RenderPageImage;
 use App\Actions\Book\TextlessPage;
+use App\Domain\Book\ContentFrame;
 use App\Domain\Book\Design\TextBox;
 use App\Domain\Book\Extraction\FontMatcher;
 use App\Domain\Book\Extraction\TextBlockBuilder;
+use App\Domain\Book\Extraction\TextLine;
 use App\Domain\Printing\PageFit;
+use App\Domain\Printing\Pdf\PdfComposer;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\PrintOptions;
+use App\Domain\Printing\Size;
 use App\Domain\Typesetting\TypesettingFailed;
 use App\Fonts\FontLibrary;
 use App\Http\Requests\BookContentRequest;
@@ -61,8 +65,15 @@ class BookPreviewController extends Controller
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
+        // Los cuadros se miden en la página del libro. Si esta página del PDF
+        // tiene otro tamaño, se encaja igual que al imprimir: escalada y centrada.
+        $source = new Size($text['width'] * 25.4 / 72, $text['height'] * 25.4 / 72);
+        [$x, $y, $width] = PdfComposer::fitInto($source, $book->pageSize(), new ContentFrame(1.0, 0.0, 0.0));
+        $scale = $width / $source->widthMm;
+        $lines = array_map(fn (TextLine $line): TextLine => $line->transformed($scale, $x * 72 / 25.4, $y * 72 / 25.4), $text['lines']);
+
         $matcher = new FontMatcher($fonts->families($book->publisher));
-        $boxes = (new TextBlockBuilder($matcher))->build($text['lines'], $text['width'], $text['height'], 'txt-'.$page.'-'.Str::lower(Str::random(4)));
+        $boxes = (new TextBlockBuilder($matcher))->build($lines, $book->pageSize()->widthMm * 72 / 25.4, $book->pageSize()->heightMm * 72 / 25.4, 'txt-'.$page.'-'.Str::lower(Str::random(4)));
 
         $substitutions = [];
         foreach ($text['lines'] as $line) {

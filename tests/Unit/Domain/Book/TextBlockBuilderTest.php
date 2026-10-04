@@ -110,3 +110,15 @@ it('normaliza nombres de fuente de PDF', function (string $pdf, string $base) {
     ['TimesNewRomanPS-BoldMT', 'Times New Roman'],
     ['Arial,Italic', 'Arial'],
 ]);
+
+it('reconoce párrafos de libro con sangría como justificados', function () {
+    $line = fn (string $text, float $x, float $y, float $X) => new TextLine($text, $x, $y, $X, $y + 8.5, [], 10.0, 'Times');
+
+    $boxes = builder()->build([
+        $line('Marco Aurelio traza un emotivo recuerdo de su', 39.96, 450.0, 276.9),
+        $line('madre, piadosa, generosa y sencilla en sus hábitos', 24.24, 463.0, 276.8),
+    ], 302.4, 494.5);
+
+    expect($boxes)->toHaveCount(1)
+        ->and($boxes[0]->align)->toBe(TextAlign::Justify);
+});

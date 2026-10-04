@@ -23,6 +23,23 @@ final readonly class TextLine
         public ?string $family = null,
     ) {}
 
+    /**
+     * La misma línea escalada y desplazada, para llevarla a una página de otro tamaño.
+     */
+    public function transformed(float $scale, float $dx, float $dy): self
+    {
+        return new self(
+            $this->text,
+            $this->xMin * $scale + $dx,
+            $this->yMin * $scale + $dy,
+            $this->xMax * $scale + $dx,
+            $this->yMax * $scale + $dy,
+            $this->runs,
+            $this->sizePt === null ? null : $this->sizePt * $scale,
+            $this->family,
+        );
+    }
+
     public function size(): float
     {
         return $this->sizePt ?? max(1.0, ($this->yMax - $this->yMin) / 1.2);

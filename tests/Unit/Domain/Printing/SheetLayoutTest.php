@@ -1,10 +1,12 @@
 <?php
 
+use App\Domain\Book\ContentFrame;
 use App\Domain\Imposition\SheetSide;
 use App\Domain\Imposition\Slot;
 use App\Domain\Printing\Offset;
 use App\Domain\Printing\PageDoesNotFit;
 use App\Domain\Printing\PageFit;
+use App\Domain\Printing\Pdf\PdfComposer;
 use App\Domain\Printing\Placement;
 use App\Domain\Printing\PrinterProfile;
 use App\Domain\Printing\SheetLayout;
@@ -94,3 +96,12 @@ it('rechaza páginas que no caben dos veces en la hoja', function (Size $page) {
     'A5, demasiado ancha' => [new Size(148, 210)],
     'demasiado alta' => [new Size(130, 220)],
 ]);
+
+it('encaja una página de otro tamaño sin deformarla y centrada', function () {
+    $page = new Size(148, 210);
+
+    expect(PdfComposer::fitInto(new Size(148, 210), $page, new ContentFrame(1.0, 0.0, 0.0)))->toBe([0.0, 0.0, 148.0, 210.0]);
+
+    [$x, $y, $width, $height] = PdfComposer::fitInto(new Size(74, 74), $page, new ContentFrame(1.0, 0.0, 0.0));
+    expect($width)->toBe(148.0)->and($height)->toBe(148.0)->and($x)->toBe(0.0)->and($y)->toBe(31.0);
+});

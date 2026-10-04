@@ -27,7 +27,8 @@ it('pinta la página ya con el tema de la cuenta para que no parpadee', function
 
     expect($html)->toContain('class="dark"')
         ->and($html)->toContain('--primary: #059669;')
-        / Sobre este verde contrasta más el texto oscuro (WCAG)./n        ->and(/)->toContain(/x27--primary-foreground: #111111;/x27);
+        // Sobre este verde contrasta más el texto oscuro (WCAG).
+        ->and($html)->toContain('--primary-foreground: #111111;');
 });
 
 it('vuelve al color de Noctua sin color de acento', function () {

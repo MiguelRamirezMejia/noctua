@@ -105,3 +105,19 @@ Base de datos local: `database/database.sqlite`.
 - Almacenamiento S3 para `libros/` e `imposiciones/` (todo pasa ya por `Storage`).
 - Trabajadores de cola para imprimir libros grandes en segundo plano.
 - `APP_DEBUG=false`. Las contraseñas exigentes y la prohibición de comandos destructivos se activan solas en producción.
+
+## 10. Modo de prueba (compartir sin guardar nada)
+
+Con `NOCTUA_DEMO=true`, la portada muestra **«Probar Noctua sin cuenta»**:
+
+- Crea una cuenta temporal (`users.demo_expires_at`) con su propio espacio, aislada de todo lo demás.
+- Se puede usar todo: subir PDF, editar, marcos, vista exacta, generar el PDF para imprimir.
+- No se puede cambiar la cuenta ni el espacio (correo, contraseña, miembros, editoriales). Máximo `NOCTUA_DEMO_MAX_BOOKS` libros (3 por defecto).
+- **Al salir** («Salir y borrar») se borra la cuenta con sus libros, fuentes, imposiciones y archivos. Si no sale, caduca a las `NOCTUA_DEMO_TTL_HOURS` horas (6 por defecto) y se borra al crear la siguiente cuenta de prueba, con `php artisan noctua:demo:purge` o con el programador (`php artisan schedule:work`, cada hora).
+
+Para compartirlo por internet se usa un túnel (por ejemplo, Cloudflare Tunnel). Mientras esté compartido:
+
+- **`APP_DEBUG=false`**: con `true`, un error mostraría rutas y configuración a cualquiera.
+- **Contraseñas fuertes** en las cuentas reales: la aplicación es accesible desde fuera.
+- Comparte la dirección solo con personas de confianza y cierra el túnel al terminar. Noctua procesa los PDF subidos con Poppler y Ghostscript, que reciben archivos de desconocidos.
+- `php artisan serve` atiende una petición a la vez: sirve para una o dos personas probando, no para muchas.

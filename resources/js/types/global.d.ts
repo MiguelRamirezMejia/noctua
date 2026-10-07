@@ -22,6 +22,8 @@ declare module '@inertiajs/core' {
             auth: Auth;
             sidebarOpen: boolean;
             appearance: { mode: Appearance; accent: string | null };
+            /** Modo de prueba: si se ofrece y cuándo caduca la cuenta de prueba actual. */
+            demo: { enabled: boolean; expires_at: string | null };
             [key: string]: unknown;
         };
     }

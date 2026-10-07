@@ -24,6 +24,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Modo de prueba
+    |--------------------------------------------------------------------------
+    |
+    | Con NOCTUA_DEMO=true la portada ofrece «Probar Noctua»: una cuenta
+    | temporal, sin registro, que se borra con todo lo suyo al caducar o al
+    | cerrar sesión.
+    |
+    */
+
+    'demo' => [
+        'enabled' => (bool) env('NOCTUA_DEMO', false),
+        'ttl_hours' => (int) env('NOCTUA_DEMO_TTL_HOURS', 6),
+        'max_books' => (int) env('NOCTUA_DEMO_MAX_BOOKS', 3),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Catálogo de fuentes
     |--------------------------------------------------------------------------
     |

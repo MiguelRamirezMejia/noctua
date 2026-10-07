@@ -31,6 +31,7 @@ use LogicException;
  * @property int|null $current_publisher_id
  * @property string $appearance light | dark | system
  * @property string|null $accent_color #rrggbb
+ * @property Carbon|null $demo_expires_at Cuenta de prueba: se borra al caducar.
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
@@ -84,6 +85,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
         return $publisher->roleOf($this);
     }
 
+    /**
+     * Cuenta de prueba creada con «Probar Noctua»: temporal y con funciones limitadas.
+     */
+    public function isDemo(): bool
+    {
+        return $this->demo_expires_at !== null;
+    }
+
     public function switchPublisher(Publisher $publisher): void
     {
         $this->forceFill(['current_publisher_id' => $publisher->id])->save();
@@ -96,6 +105,7 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'demo_expires_at' => 'datetime',
         ];
     }
 }

@@ -18,6 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Detrás de un túnel o proxy (Cloudflare Tunnel, balanceador) la
+        // petición llega por HTTP: se confía en X-Forwarded-* para generar
+        // enlaces https y conocer la IP real. En producción conviene limitarlo
+        // a las IP del proxy.
+        $middleware->trustProxies(at: '*');
+
         // Los espacios al principio o al final de un fragmento son parte del texto
         // («un » + «dragón»): no se recortan.
         $middleware->trimStrings(except: ['pages.*.design.elements.*.spans.*.text']);

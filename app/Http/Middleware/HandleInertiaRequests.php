@@ -46,6 +46,7 @@ class HandleInertiaRequests extends Middleware
                 'publishers' => fn (): array => $this->publishers($request),
             ],
             'appearance' => fn (): array => $this->appearance($request),
+            'demo' => fn (): array => $this->demo($request),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
@@ -89,6 +90,22 @@ class HandleInertiaRequests extends Middleware
             ->get()
             ->map(fn (Publisher $p): array => ['id' => $p->id, 'name' => $p->name, 'personal' => $p->personal])
             ->all());
+    }
+
+    /**
+     * Modo de prueba: si se ofrece en la portada y, para una cuenta de prueba,
+     * cuándo se borrará.
+     *
+     * @return array{enabled: bool, expires_at: string|null}
+     */
+    private function demo(Request $request): array
+    {
+        $user = $request->user();
+
+        return [
+            'enabled' => config()->boolean('noctua.demo.enabled'),
+            'expires_at' => $user instanceof User ? $user->demo_expires_at?->toIso8601String() : null,
+        ];
     }
 
     /**

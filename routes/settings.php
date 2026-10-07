@@ -4,17 +4,19 @@ use App\Http\Controllers\PublisherController;
 use App\Http\Controllers\Settings\AppearanceController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SecurityController;
+use App\Http\Middleware\RestrictDemoAccounts;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth'])->group(function () {
+// Cuenta: no disponible en el modo de prueba.
+Route::middleware(['auth', RestrictDemoAccounts::class])->group(function () {
     Route::redirect('settings', '/settings/profile');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', RestrictDemoAccounts::class])->group(function () {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('settings/security', [SecurityController::class, 'edit'])
@@ -31,6 +33,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('settings/espacio/miembros/{member}', [PublisherController::class, 'updateMember'])->name('workspace.members.update');
     Route::delete('settings/espacio/miembros/{member}', [PublisherController::class, 'removeMember'])->name('workspace.members.destroy');
     Route::post('espacios', [PublisherController::class, 'store'])->name('workspaces.store');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('espacio-actual', [PublisherController::class, 'switch'])->name('workspaces.switch');
 
     Route::get('settings/appearance', [AppearanceController::class, 'edit'])->name('appearance.edit');

@@ -64,6 +64,10 @@ class BookController extends Controller
             throw ValidationException::withMessages(['pdf' => 'Sube un archivo PDF.']);
         }
 
+        if ($user->isDemo() && Book::query()->where('user_id', $user->id)->count() >= config()->integer('noctua.demo.max_books')) {
+            throw ValidationException::withMessages(['pdf' => 'En el modo de prueba se pueden subir hasta '.config()->integer('noctua.demo.max_books').' libros. Borra uno para subir otro.']);
+        }
+
         try {
             $book = $create->handle($user, $pdf, $request->string('title')->trim()->toString() ?: null);
         } catch (InvalidArgumentException $e) {

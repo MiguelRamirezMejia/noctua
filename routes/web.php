@@ -4,6 +4,7 @@ use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookPreviewController;
 use App\Http\Controllers\BorderPreviewController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DemoController;
 use App\Http\Controllers\FontController;
 use App\Http\Controllers\ImpositionController;
 use App\Http\Controllers\PrintingToolsController;
@@ -11,6 +12,9 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', fn () => Inertia::render('Welcome'))->name('home');
+
+// «Probar Noctua»: cuenta temporal sin registro (solo con NOCTUA_DEMO=true).
+Route::post('probar', [DemoController::class, 'store'])->middleware(['guest', 'throttle:5,60'])->name('demo.start');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');

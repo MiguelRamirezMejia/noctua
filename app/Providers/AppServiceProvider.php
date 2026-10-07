@@ -6,13 +6,17 @@ use App\Actions\Book\ExtractPageText;
 use App\Actions\Book\RenderPageImage;
 use App\Actions\Book\RenderThumbnails;
 use App\Actions\Book\TextlessPage;
+use App\Actions\Demo\PurgeDemoAccount;
 use App\Domain\Typesetting\Typst\BorderPreview;
 use App\Domain\Typesetting\Typst\PageLayers;
 use App\Domain\Typesetting\Typst\TypstRunner;
+use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -70,6 +74,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Al salir del modo de prueba se borra todo lo de esa cuenta.
+        Event::listen(function (Logout $event): void {
+            if ($event->user instanceof User && $event->user->isDemo()) {
+                app(PurgeDemoAccount::class)->handle($event->user);
+            }
+        });
     }
 
     /**

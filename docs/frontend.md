@@ -138,3 +138,13 @@ SpreadEditor.vue
 | `imposition.ts`                      | Ajustes, impresora, plan y caras de hoja para la imposición.                                                                                                   |
 | `auth.ts`                            | `User`, `Workspace` (espacio con rol), `Passkey`.                                                                                                              |
 | `navigation.ts`, `ui.ts`, `index.ts` | Elementos de navegación, migas de pan y reexportaciones.                                                                                                       |
+
+## 11. Guía con el murciélago (`components/guide/`)
+
+| Archivo                   | Qué hace                                                                                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GuideBat.vue`            | El murciélago de Noctua en SVG animado con CSS: flota batiendo las alas (más rápido cuando habla), parpadea, mueve la boca, inclina la cabeza en cada paso y mira hacia lo que señala. Respeta «reducir movimiento».           |
+| `GuideTour.vue`           | La guía en pantalla: ilumina el elemento del paso (`data-guide="…"`) con un foco, coloca al murciélago y el bocadillo al lado, escribe el texto letra a letra y responde al teclado (flechas, Intro, Esc) antes que el editor. |
+| `GuideLauncher.vue`       | Botón flotante «¿Te guío?» y apertura automática la primera vez que se entra en cada pantalla.                                                                                                                                 |
+| `lib/guide.ts`            | Las guías y sus pasos: inicio, libros, editor del libro, editor de pliego, fuentes e imposición. Para añadir un paso: marcar el elemento con `data-guide` y añadirlo aquí.                                                     |
+| `composables/useGuide.ts` | Estado único de la guía (cuál y en qué paso) y qué guías ya se vieron (`localStorage`).                                                                                                                                        |

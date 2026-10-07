@@ -70,7 +70,7 @@ function removeFace(id: number, label: string) {
             description="Tipos de letra disponibles para los textos y los números de página. Puedes subir los tuyos."
         />
 
-        <Card class="max-w-2xl">
+        <Card class="max-w-2xl" data-guide="subir-fuentes">
             <CardHeader>
                 <CardTitle class="flex items-center gap-2">
                     <Upload class="size-4" /> Subir fuentes
@@ -124,6 +124,7 @@ function removeFace(id: number, label: string) {
 
         <section
             v-for="[category, list] in groups"
+            data-guide="catalogo"
             :key="category"
             :aria-labelledby="`cat-${category}`"
             class="space-y-3"

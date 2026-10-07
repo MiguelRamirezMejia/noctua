@@ -39,7 +39,7 @@ const dateFormat = new Intl.DateTimeFormat('es', { dateStyle: 'medium' });
             description="Sube el PDF de un libro ya maquetado (Canva, Word, InDesign…) para ordenar sus páginas, numerarlas e imprimirlo por cuadernillos."
         />
 
-        <Card class="max-w-2xl">
+        <Card class="max-w-2xl" data-guide="subir-libro">
             <CardHeader>
                 <CardTitle class="flex items-center gap-2">
                     <BookPlus class="size-4" /> Nuevo libro desde PDF
@@ -103,7 +103,11 @@ const dateFormat = new Intl.DateTimeFormat('es', { dateStyle: 'medium' });
             </CardContent>
         </Card>
 
-        <section v-if="books.length > 0" aria-labelledby="mis-libros">
+        <section
+            v-if="books.length > 0"
+            aria-labelledby="mis-libros"
+            data-guide="lista-libros"
+        >
             <h2 id="mis-libros" class="mb-4 text-lg font-semibold">
                 Mis libros
             </h2>

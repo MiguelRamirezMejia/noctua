@@ -390,6 +390,7 @@ const offsetFields = [
                     <Undo2 /> Descartar
                 </Button>
                 <Button
+                    data-guide="guardar"
                     :disabled="!form.isDirty || form.processing"
                     @click="save"
                 >
@@ -401,7 +402,11 @@ const offsetFields = [
         <InputError :message="form.errors.pages" />
 
         <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-            <section aria-labelledby="paginas" class="space-y-4">
+            <section
+                aria-labelledby="paginas"
+                class="space-y-4"
+                data-guide="paginas"
+            >
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h2 id="paginas" class="text-lg font-semibold">Páginas</h2>
                     <p class="text-sm text-muted-foreground">
@@ -465,6 +470,7 @@ const offsetFields = [
                             size="sm"
                             class="absolute bottom-7 left-1/2 -translate-x-1/2 opacity-0 shadow transition group-focus-within/spread:opacity-100 group-hover/spread:opacity-100"
                             :aria-label="`Editar el pliego ${s + 1}`"
+                            data-guide="editar-pliego"
                             @click="openSpread = s"
                         >
                             <PencilRuler /> Editar
@@ -474,7 +480,7 @@ const offsetFields = [
             </section>
 
             <aside class="flex flex-col gap-6">
-                <Card>
+                <Card data-guide="margenes">
                     <CardHeader>
                         <CardTitle>Márgenes del libro</CardTitle>
                         <CardDescription>
@@ -528,7 +534,7 @@ const offsetFields = [
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card data-guide="marco">
                     <CardHeader>
                         <CardTitle>Marco decorativo</CardTitle>
                         <CardDescription>
@@ -694,7 +700,7 @@ const offsetFields = [
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card data-guide="numeracion">
                     <CardHeader>
                         <CardTitle>Numeración de páginas</CardTitle>
                         <CardDescription>
@@ -863,7 +869,7 @@ const offsetFields = [
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card data-guide="imprimir">
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             <Printer class="size-4" /> Imprimir

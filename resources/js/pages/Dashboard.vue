@@ -98,7 +98,7 @@ const dateFormat = new Intl.DateTimeFormat('es', { dateStyle: 'medium' });
             </Button>
         </div>
 
-        <Card v-if="pending > 0">
+        <Card v-if="pending > 0" data-guide="primeros-pasos">
             <CardHeader>
                 <CardTitle>Primeros pasos</CardTitle>
                 <CardDescription>

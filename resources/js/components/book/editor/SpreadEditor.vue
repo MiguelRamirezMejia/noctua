@@ -10,6 +10,7 @@ import {
     Bold,
     ChevronLeft,
     ChevronRight,
+    CircleHelp,
     Copy,
     Eye,
     Italic,
@@ -37,6 +38,7 @@ import PageCanvas from '@/components/book/editor/PageCanvas.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useGuide } from '@/composables/useGuide';
 import { contentFrame } from '@/lib/layout';
 import { cloneData, toHex } from '@/lib/richText';
 import type {
@@ -492,9 +494,14 @@ const stage = ref<HTMLElement | null>(null);
 const scale = ref(2);
 let observer: ResizeObserver | undefined;
 
+// La primera vez que se abre el editor de pliego, el murciélago lo presenta.
+const { start: startGuide, startOnce: startGuideOnce } = useGuide();
+let guideTimer: ReturnType<typeof setTimeout> | undefined;
+
 onMounted(() => {
     window.addEventListener('keydown', onKeydown);
     resetHistory();
+    guideTimer = setTimeout(() => startGuideOnce('pliego'), 600);
 
     observer = new ResizeObserver(([entry]) => {
         const { width, height } = entry.contentRect;
@@ -514,6 +521,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', onKeydown);
+    clearTimeout(guideTimer);
     observer?.disconnect();
     clearTimeout(snapshotTimer);
     clearTimeout(previewTimer);
@@ -741,6 +749,7 @@ watch(
             <Button
                 variant="outline"
                 size="sm"
+                data-guide="anadir"
                 :disabled="exact"
                 @click="addText"
             >
@@ -777,8 +786,18 @@ watch(
 
             <div class="ml-auto flex items-center gap-2">
                 <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Guía del editor de pliego"
+                    title="¿Te guío?"
+                    @click="startGuide('pliego')"
+                >
+                    <CircleHelp />
+                </Button>
+                <Button
                     :variant="exact ? 'default' : 'outline'"
                     size="sm"
+                    data-guide="vista-exacta"
                     :aria-pressed="exact"
                     @click="exact = !exact"
                 >
@@ -789,6 +808,7 @@ watch(
                 >
                 <Button
                     size="sm"
+                    data-guide="guardar-pliego"
                     :disabled="!dirty || saving"
                     @click="emit('save')"
                 >
@@ -886,6 +906,7 @@ watch(
             <aside
                 class="w-80 shrink-0 overflow-y-auto border-l bg-background p-4 text-sm"
                 aria-label="Propiedades"
+                data-guide="inspector"
             >
                 <p v-if="exact" class="text-muted-foreground">
                     Así saldrá impreso este pliego. Desactiva «Vista exacta»
@@ -1217,6 +1238,7 @@ watch(
                             </p>
                             <Button
                                 size="sm"
+                                data-guide="texto-editable"
                                 :disabled="extracting"
                                 @click="makeTextEditable"
                             >

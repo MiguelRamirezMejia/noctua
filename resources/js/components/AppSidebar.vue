@@ -33,6 +33,7 @@ const baseNavItems: NavItem[] = [
         title: 'Libros',
         href: books(),
         icon: Library,
+        guide: 'nav-libros',
     },
     {
         title: 'Fuentes',
@@ -63,7 +64,7 @@ const mainNavItems = computed<NavItem[]>(() =>
             <WorkspaceSwitcher />
         </SidebarHeader>
 
-        <SidebarContent>
+        <SidebarContent data-guide="menu">
             <NavMain :items="mainNavItems" />
         </SidebarContent>
 

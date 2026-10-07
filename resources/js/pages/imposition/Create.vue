@@ -286,7 +286,7 @@ const dateFormat = new Intl.DateTimeFormat('es', {
             </Card>
 
             <div class="flex flex-col gap-6">
-                <Card>
+                <Card data-guide="calibracion">
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             <Ruler class="size-4" /> Calibrar la impresora

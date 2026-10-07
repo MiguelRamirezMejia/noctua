@@ -6,6 +6,8 @@ use App\Actions\Book\ExtractPageText;
 use App\Actions\Book\PrintBook;
 use App\Actions\Book\RenderPageImage;
 use App\Actions\Book\TextlessPage;
+use App\Activity\ActivityLog;
+use App\Activity\ActivityType;
 use App\Domain\Book\ContentFrame;
 use App\Domain\Book\Design\TextBox;
 use App\Domain\Book\Extraction\FontMatcher;
@@ -62,6 +64,8 @@ class BookPreviewController extends Controller
             $text = $extract->handle($book, $page);
             $textless->handle($book, $page);
         } catch (RuntimeException $e) {
+            app(ActivityLog::class)->record(ActivityType::Error, 'No se pudo hacer editable la página '.$page.' de «'.$book->title.'»: '.$e->getMessage(), ['página' => $page], $book);
+
             return response()->json(['message' => $e->getMessage()], 422);
         }
 
@@ -82,6 +86,13 @@ class BookPreviewController extends Controller
                 $substitutions[$line->family] = $match->family;
             }
         }
+
+        app(ActivityLog::class)->record(ActivityType::TextMadeEditable, 'Hizo editable el texto de la página '.$page.' de «'.$book->title.'» ('.count($boxes).' cuadros).', [
+            'página' => $page,
+            'cuadros' => count($boxes),
+            'líneas' => count($text['lines']),
+            'fuentes_sustituidas' => $substitutions,
+        ], $book);
 
         return response()->json([
             'elements' => array_map(fn (TextBox $box): array => $box->toArray(), $boxes),
@@ -140,6 +151,8 @@ class BookPreviewController extends Controller
                 $file = $this->renderedPage($tmp, $i + 1);
                 $images[$position] = 'data:image/png;base64,'.base64_encode((string) file_get_contents($file));
             }
+
+            app(ActivityLog::class)->record(ActivityType::ExactPreview, 'Miró la vista exacta de las páginas '.implode(' y ', $positions).' de «'.$book->title.'».', ['páginas' => $positions], $book);
 
             return response()->json(['images' => $images]);
         } catch (TypesettingFailed $e) {

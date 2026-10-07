@@ -3,6 +3,8 @@
 namespace App\Actions\Demo;
 
 use App\Actions\Imposition\StoredImposition;
+use App\Activity\ActivityLog;
+use App\Activity\ActivityType;
 use App\Fonts\FontLibrary;
 use App\Models\Book;
 use App\Models\User;
@@ -17,6 +19,7 @@ final readonly class PurgeDemoAccount
 {
     public function __construct(
         private FontLibrary $fonts,
+        private ActivityLog $activity,
     ) {}
 
     public function handle(User $user): void
@@ -57,6 +60,7 @@ final readonly class PurgeDemoAccount
         $count = 0;
 
         foreach (User::query()->whereNotNull('demo_expires_at')->where('demo_expires_at', '<=', now())->get() as $user) {
+            $this->activity->record(ActivityType::DemoExpired, 'Su cuenta de prueba caducó y se borró con todos sus libros.', user: $user);
             $this->handle($user);
             $count++;
         }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Activity\ActivityLog;
+use App\Activity\ActivityType;
 use App\Fonts\FontLibrary;
 use App\Fonts\InvalidFont;
 use App\Models\Font;
@@ -45,6 +47,11 @@ class FontController extends Controller
             }
         }
 
+        app(ActivityLog::class)->record(ActivityType::FontUploaded, 'Subió fuentes: '.($added === [] ? 'ninguna válida' : implode(', ', array_unique($added))).'.', [
+            'añadidas' => $added,
+            'rechazadas' => $errors,
+        ]);
+
         if ($added === [] && $errors !== []) {
             throw ValidationException::withMessages(['files' => implode(' ', $errors)]);
         }
@@ -61,6 +68,8 @@ class FontController extends Controller
     public function destroy(Font $font, #[CurrentUser] User $user): RedirectResponse
     {
         abort_unless($font->publisher_id !== null && $font->publisher_id === $user->publisher()->id, 403);
+
+        app(ActivityLog::class)->record(ActivityType::FontDeleted, "Borró la fuente «{$font->family}».", ['peso' => $font->weight, 'cursiva' => $font->italic]);
 
         Storage::disk('local')->delete($font->path);
         $font->delete();

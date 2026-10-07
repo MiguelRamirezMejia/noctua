@@ -1,8 +1,10 @@
 <?php
 
+use App\Activity\ActivityLog;
 use App\Http\Middleware\EnsureUserHasPublisher;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RecordPageVisits;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -33,9 +35,15 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureUserHasPublisher::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            RecordPageVisits::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Los errores inesperados también aparecen en el registro de actividad.
+        $exceptions->report(function (Throwable $e): void {
+            app(ActivityLog::class)->error($e);
+        });
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

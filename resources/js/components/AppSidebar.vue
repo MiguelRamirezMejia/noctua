@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { BookOpenText, LayoutGrid, Library, Type } from '@lucide/vue';
+import { usePage } from '@inertiajs/vue3';
+import { Activity, BookOpenText, LayoutGrid, Library, Type } from '@lucide/vue';
+import { computed } from 'vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import WorkspaceSwitcher from '@/components/WorkspaceSwitcher.vue';
@@ -14,12 +15,15 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as activity } from '@/routes/activity';
 import { index as books } from '@/routes/books';
 import { index as fonts } from '@/routes/fonts';
 import { create as imposition } from '@/routes/imposition';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
+const page = usePage();
+
+const baseNavItems: NavItem[] = [
     {
         title: 'Inicio',
         href: dashboard(),
@@ -41,6 +45,16 @@ const mainNavItems: NavItem[] = [
         icon: BookOpenText,
     },
 ];
+
+// «Actividad» solo aparece para quien administra la instalación.
+const mainNavItems = computed<NavItem[]>(() =>
+    page.props.auth.can?.viewActivity
+        ? [
+              ...baseNavItems,
+              { title: 'Actividad', href: activity(), icon: Activity },
+          ]
+        : baseNavItems,
+);
 </script>
 
 <template>

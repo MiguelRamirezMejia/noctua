@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookPreviewController;
 use App\Http\Controllers\BorderPreviewController;
@@ -31,6 +32,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('libros/{book}/paginas/{page}/texto-editable', [BookPreviewController::class, 'editableText'])->whereNumber('page')->name('books.editable-text');
 
     Route::get('marcos/vista', BorderPreviewController::class)->name('borders.preview');
+
+    Route::get('actividad', [ActivityController::class, 'index'])->name('activity.index');
 
     Route::get('fuentes', [FontController::class, 'index'])->name('fonts.index');
     Route::post('fuentes', [FontController::class, 'store'])->name('fonts.store');

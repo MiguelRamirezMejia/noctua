@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Actions\Book\CreateBookFromPdf;
 use App\Actions\Book\PrintBook;
+use App\Activity\ActivityLog;
+use App\Activity\ActivityType;
+use App\Activity\BookChanges;
 use App\Domain\Book\BorderStyle;
 use App\Domain\Book\FolioPosition;
 use App\Domain\Book\PageItem;
@@ -71,8 +74,20 @@ class BookController extends Controller
         try {
             $book = $create->handle($user, $pdf, $request->string('title')->trim()->toString() ?: null);
         } catch (InvalidArgumentException $e) {
+            app(ActivityLog::class)->record(ActivityType::BookUploadFailed, "No se pudo subir «{$pdf->getClientOriginalName()}»: {$e->getMessage()}", [
+                'archivo' => $pdf->getClientOriginalName(),
+                'tamaño_mb' => round($pdf->getSize() / 1048576, 1),
+            ]);
+
             throw ValidationException::withMessages(['pdf' => $e->getMessage()]);
         }
+
+        app(ActivityLog::class)->record(ActivityType::BookUploaded, "Subió «{$pdf->getClientOriginalName()}» ({$book->source_page_count} páginas).", [
+            'archivo' => $pdf->getClientOriginalName(),
+            'tamaño_mb' => round($pdf->getSize() / 1048576, 1),
+            'páginas' => $book->source_page_count,
+            'tamaño_página_mm' => round((float) $book->source_width_mm).' × '.round((float) $book->source_height_mm),
+        ], $book);
 
         return to_route('books.edit', $book);
     }
@@ -80,6 +95,11 @@ class BookController extends Controller
     public function edit(Request $request, Book $book, FontLibrary $library, #[CurrentUser] User $user): Response
     {
         Gate::authorize('view', $book);
+
+        // Solo la visita completa, no las recargas parciales.
+        if (! $request->hasHeader('X-Inertia-Partial-Data')) {
+            app(ActivityLog::class)->record(ActivityType::BookOpened, "Abrió el editor de «{$book->title}».", book: $book);
+        }
 
         $folios = $book->folioSettings();
 
@@ -125,11 +145,16 @@ class BookController extends Controller
     {
         $request->validate(['title' => ['required', 'string', 'max:200']]);
 
+        $title = $request->string('title')->trim()->toString();
+        $changes = BookChanges::describe($book, $title, $request->sequence(), $request->folioSettings(), $request->bookLayout());
+
         $book->setSequence($request->sequence());
         $book->setFolioSettings($request->folioSettings());
         $book->setBookLayout($request->bookLayout());
-        $book->title = $request->string('title')->trim()->toString();
+        $book->title = $title;
         $book->save();
+
+        app(ActivityLog::class)->record(ActivityType::BookSaved, "Guardó «{$book->title}»: {$changes['summary']}.", $changes['properties'], $book);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Cambios guardados.']);
 
@@ -151,6 +176,8 @@ class BookController extends Controller
     public function destroy(Book $book): RedirectResponse
     {
         Gate::authorize('delete', $book);
+
+        app(ActivityLog::class)->record(ActivityType::BookDeleted, "Borró «{$book->title}».", book: $book);
 
         Storage::disk('local')->deleteDirectory($book->directory());
         $book->delete();
@@ -178,8 +205,12 @@ class BookController extends Controller
         try {
             $stored = $print->handle($user, $book, $request->settings(), $request->printer(), $request->options());
         } catch (InvalidArgumentException|TypesettingFailed $e) {
+            app(ActivityLog::class)->record(ActivityType::Error, "No se pudo generar el PDF de «{$book->title}»: {$e->getMessage()}", $request->defaults(), $book);
+
             throw ValidationException::withMessages(['print' => $e->getMessage()]);
         }
+
+        app(ActivityLog::class)->record(ActivityType::BookPrinted, "Generó el PDF para imprimir «{$book->title}».", [...$request->defaults(), 'imposición' => $stored->id], $book);
 
         $request->session()->put(PrintDefaults::SESSION_KEY, $request->defaults());
 

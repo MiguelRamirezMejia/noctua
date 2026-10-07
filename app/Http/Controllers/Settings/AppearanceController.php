@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Activity\ActivityLog;
+use App\Activity\ActivityType;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\HandleAppearance;
 use App\Models\User;
@@ -38,6 +40,8 @@ class AppearanceController extends Controller
             'appearance' => $request->string('appearance')->toString(),
             'accent_color' => $accent === '' ? null : $accent,
         ])->save();
+
+        app(ActivityLog::class)->record(ActivityType::AppearanceChanged, 'Cambió la apariencia: modo '.$user->appearance.($user->accent_color ? ', color '.$user->accent_color : '').'.');
 
         // La cookie mantiene el modo también en las páginas sin sesión (inicio de sesión).
         return back()->withCookie(cookie()->forever('appearance', $user->appearance));

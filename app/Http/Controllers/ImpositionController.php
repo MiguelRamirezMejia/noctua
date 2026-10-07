@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Actions\Imposition\ImposeUploadedPdf;
 use App\Actions\Imposition\StoredImposition;
+use App\Activity\ActivityLog;
+use App\Activity\ActivityType;
 use App\Domain\Imposition\Imposer;
 use App\Domain\Imposition\Sheet;
 use App\Domain\Imposition\Signature;
@@ -48,8 +50,12 @@ class ImpositionController extends Controller
         try {
             $stored = $impose->handle($user->publisher(), $pdf, $request->settings(), $request->printer(), $request->options());
         } catch (InvalidArgumentException $e) {
+            app(ActivityLog::class)->record(ActivityType::Error, "No se pudo imponer «{$pdf->getClientOriginalName()}»: {$e->getMessage()}", $request->defaults());
+
             throw ValidationException::withMessages(['pdf' => $e->getMessage()]);
         }
+
+        app(ActivityLog::class)->record(ActivityType::QuickImposition, "Impuso «{$pdf->getClientOriginalName()}» ({$stored->info['page_count']} páginas).", [...$request->defaults(), 'imposición' => $stored->id]);
 
         $request->session()->put(PrintDefaults::SESSION_KEY, $request->defaults());
 
@@ -93,6 +99,7 @@ class ImpositionController extends Controller
 
         if ($request->boolean('download')) {
             $name = preg_replace('/\.pdf$/i', '', $stored->info['original_name']).'-impuesto.pdf';
+            app(ActivityLog::class)->record(ActivityType::ImpositionDownloaded, "Descargó el PDF para imprimir «{$name}».", ['imposición' => $stored->id]);
 
             return response()->download($path, $name);
         }

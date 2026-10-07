@@ -24,6 +24,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Administración
+    |--------------------------------------------------------------------------
+    |
+    | Correos de quienes administran esta instalación (separados por comas):
+    | ven el registro de actividad de todas las cuentas.
+    |
+    */
+
+    'admins' => array_values(array_filter(array_map(
+        fn (string $email): string => strtolower(trim($email)),
+        explode(',', (string) env('NOCTUA_ADMINS', '')),
+    ))),
+
+    /*
+    |--------------------------------------------------------------------------
     | Modo de prueba
     |--------------------------------------------------------------------------
     |

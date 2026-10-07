@@ -121,3 +121,16 @@ Para compartirlo por internet se usa un túnel (por ejemplo, Cloudflare Tunnel).
 - **Contraseñas fuertes** en las cuentas reales: la aplicación es accesible desde fuera.
 - Comparte la dirección solo con personas de confianza y cierra el túnel al terminar. Noctua procesa los PDF subidos con Poppler y Ghostscript, que reciben archivos de desconocidos.
 - `php artisan serve` atiende una petición a la vez: sirve para una o dos personas probando, no para muchas.
+
+## 11. Registro de actividad
+
+En **Actividad** (`/actividad`, solo para los correos de `NOCTUA_ADMINS`) se ve todo lo que se hace en Noctua, en vivo:
+
+- Cuenta: registros, inicios y cierres de sesión, intentos fallidos, entrada, salida y caducidad del modo de prueba, cambios de apariencia.
+- Espacios: creación, cambio, nombre y miembros.
+- Libros: subida (y subidas fallidas), apertura del editor, guardado con un resumen de qué cambió, borrado.
+- Edición: texto hecho editable (página, cuadros, fuentes sustituidas) y vista exacta.
+- Impresión: PDF del libro generado, imposición rápida, descargas, hoja de calibración y documento de prueba.
+- Fuentes subidas y borradas, errores inesperados y, si se activa el filtro, las páginas visitadas.
+
+Cada evento guarda quién (con un código «Invitado XXXX» para cada cuenta de prueba), cuándo, IP, navegador, sesión y detalles. Se conserva aunque la cuenta o el libro se borren y se limpia a los 90 días (`model:prune`, diario en el programador).

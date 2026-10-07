@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Activity\ActivityLog;
+use App\Activity\ActivityType;
 use App\Domain\Printing\Offset;
 use App\Domain\Printing\Pdf\CalibrationSheet;
 use App\Domain\Printing\Pdf\TestDocument;
@@ -27,6 +29,8 @@ class PrintingToolsController extends Controller
             backOffset: new Offset($request->float('back_offset_x'), $request->float('back_offset_y')),
         ));
 
+        app(ActivityLog::class)->record(ActivityType::CalibrationDownloaded, 'Descargó la hoja de calibración.');
+
         return response()->download($path, 'calibracion.pdf')->deleteFileAfterSend();
     }
 
@@ -37,6 +41,8 @@ class PrintingToolsController extends Controller
         $pages = $request->integer('pages', 16);
         $path = $this->temporaryPdf();
         $document->render($path, $pages);
+
+        app(ActivityLog::class)->record(ActivityType::TestDocumentDownloaded, "Descargó el documento de prueba de {$pages} páginas.");
 
         return response()->download($path, "prueba-{$pages}-paginas.pdf")->deleteFileAfterSend();
     }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Publishers\CreatePublisher;
+use App\Activity\ActivityLog;
+use App\Activity\ActivityType;
 use App\Enums\PublisherRole;
 use App\Models\Publisher;
 use App\Models\User;
@@ -50,6 +52,7 @@ class PublisherController extends Controller
         $request->validate(['name' => ['required', 'string', 'max:120']], attributes: ['name' => 'nombre de la editorial']);
 
         $publisher = $create->handle($user, $request->string('name')->trim()->toString());
+        app(ActivityLog::class)->record(ActivityType::WorkspaceCreated, "Creó la editorial «{$publisher->name}».");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Editorial «{$publisher->name}» creada. Ya estás trabajando en ella."]);
 
@@ -66,6 +69,7 @@ class PublisherController extends Controller
         }
 
         $user->switchPublisher($publisher);
+        app(ActivityLog::class)->record(ActivityType::WorkspaceSwitched, "Cambió al espacio «{$publisher->name}».");
 
         return to_route('dashboard');
     }
@@ -75,7 +79,9 @@ class PublisherController extends Controller
         $publisher = $this->ownedPublisher($user);
         $request->validate(['name' => ['required', 'string', 'max:120']], attributes: ['name' => 'nombre']);
 
+        $old = $publisher->name;
         $publisher->update(['name' => $request->string('name')->trim()->toString()]);
+        app(ActivityLog::class)->record(ActivityType::WorkspaceRenamed, "Renombró el espacio «{$old}» a «{$publisher->name}».");
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Nombre actualizado.']);
 
         return back();
@@ -102,6 +108,7 @@ class PublisherController extends Controller
         }
 
         $publisher->members()->attach($member->id, ['role' => $request->string('role')->toString()]);
+        app(ActivityLog::class)->record(ActivityType::MemberAdded, "Añadió a {$member->name} a «{$publisher->name}».", ['rol' => $request->string('role')->toString()]);
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$member->name} se ha unido a la editorial."]);
 
         return back();
@@ -120,6 +127,7 @@ class PublisherController extends Controller
         }
 
         $publisher->members()->updateExistingPivot($member->id, ['role' => $role->value]);
+        app(ActivityLog::class)->record(ActivityType::MemberRoleChanged, "Cambió el rol de {$member->name} a {$role->label()}.");
 
         return back();
     }
@@ -139,6 +147,7 @@ class PublisherController extends Controller
         }
 
         $publisher->members()->detach($member->id);
+        app(ActivityLog::class)->record(ActivityType::MemberRemoved, $member->id === $user->id ? "Salió de «{$publisher->name}»." : "Quitó a {$member->name} de «{$publisher->name}».");
 
         if ($member->id === $user->id) {
             $user->forceFill(['current_publisher_id' => null])->save();

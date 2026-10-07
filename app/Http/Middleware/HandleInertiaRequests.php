@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Publisher;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -44,6 +45,9 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'publisher' => fn (): ?array => $this->currentPublisher($request),
                 'publishers' => fn (): array => $this->publishers($request),
+                'can' => fn (): array => [
+                    'viewActivity' => $request->user() !== null && Gate::allows('view-activity'),
+                ],
             ],
             'appearance' => fn (): array => $this->appearance($request),
             'demo' => fn (): array => $this->demo($request),

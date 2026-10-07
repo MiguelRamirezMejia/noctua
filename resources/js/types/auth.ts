@@ -23,6 +23,7 @@ export type Auth = {
     user: User;
     publisher: (Workspace & { role: WorkspaceRole | null }) | null;
     publishers: Workspace[];
+    can: { viewActivity: boolean };
 };
 
 export type Passkey = {

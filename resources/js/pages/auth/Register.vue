@@ -4,6 +4,7 @@ import { Building2, User } from '@lucide/vue';
 import { ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
+import GuestAccess from '@/components/GuestAccess.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -161,4 +162,5 @@ const options = [
             >
         </div>
     </Form>
+    <GuestAccess compact class="mt-6" />
 </template>

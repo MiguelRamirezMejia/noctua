@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 import {
     BookOpenText,
     Building2,
-    FlaskConical,
     Layers,
     Printer,
     Ruler,
     Type,
 } from '@lucide/vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
+import GuestAccess from '@/components/GuestAccess.vue';
 import ThemeToggle from '@/components/ThemeToggle.vue';
 import { Button } from '@/components/ui/button';
 import { dashboard, login, register } from '@/routes';
-import { start as startDemo } from '@/routes/demo';
 
 const features = [
     {
@@ -121,31 +120,7 @@ const features = [
                             <Link :href="login()">Ya tengo cuenta</Link>
                         </Button>
                     </div>
-                    <Form
-                        v-if="
-                            $page.props.demo.enabled && !$page.props.auth.user
-                        "
-                        v-slot="{ processing }"
-                        v-bind="startDemo.form()"
-                        class="flex flex-wrap items-center gap-3 rounded-lg border border-dashed p-4"
-                    >
-                        <Button
-                            type="submit"
-                            variant="secondary"
-                            :disabled="processing"
-                        >
-                            <FlaskConical />
-                            {{
-                                processing
-                                    ? 'Preparando…'
-                                    : 'Probar Noctua sin cuenta'
-                            }}
-                        </Button>
-                        <span class="text-sm text-muted-foreground">
-                            Sube tu PDF y prueba todo. Nada se guarda: se borra
-                            al salir.
-                        </span>
-                    </Form>
+                    <GuestAccess v-if="!$page.props.auth.user" />
                 </div>
 
                 <!-- Un pliego abierto estilizado. -->

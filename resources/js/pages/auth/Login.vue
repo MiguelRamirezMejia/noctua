@@ -2,6 +2,7 @@
 import { Form, Head } from '@inertiajs/vue3';
 import InputError from '@/components/InputError.vue';
 import PasswordInput from '@/components/PasswordInput.vue';
+import GuestAccess from '@/components/GuestAccess.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -108,4 +109,5 @@ defineProps<{
             <TextLink :href="register()" :tabindex="5">Crea una</TextLink>
         </div>
     </Form>
+    <GuestAccess compact class="mt-6" />
 </template>
